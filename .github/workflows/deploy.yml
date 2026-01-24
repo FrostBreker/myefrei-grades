@@ -1,0 +1,52 @@
+name: Deploy
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          passphrase: ${{ secrets.SERVER_PASSPHRASE }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            set -e
+
+            # Variables
+            PROJECT_DIR=data/codebase/myefrei-grades/
+            REPO_URL=https://github.com/FrostBreker/myefrei-grades.git
+            ENV_SOURCE_PATH=data/docker/data/myefrei-grades/.env
+            CONTAINER_NAME=myefrei-grades-frontend
+            IMAGE_NAME=myefrei-grades-frontend:latest
+
+            # Clean up old code
+            rm -rf $PROJECT_DIR
+
+            # Clone the latest code
+            git clone $REPO_URL $PROJECT_DIR || { echo "Failed to clone repository"; exit 1; }
+
+            # Copy .env file
+            cp $ENV_SOURCE_PATH $PROJECT_DIR || { echo "Failed to copy .env file"; exit 1; }
+
+            # Go to project directory
+            cd $PROJECT_DIR || { echo "Failed to change directory"; exit 1; }
+
+            # Build Docker image
+            docker build -t $IMAGE_NAME . || { echo "Failed to build Docker image"; exit 1; }
+
+            # Stop and remove existing container if running
+            docker stop $CONTAINER_NAME || true
+            docker rm $CONTAINER_NAME || true
+
+            # Start new container
+            docker run --restart=always -p 10030:3000 --network soundtales-network --ip 172.18.0.40 --name $CONTAINER_NAME -d $IMAGE_NAME || { echo "Failed to start Docker container"; exit 1; }
