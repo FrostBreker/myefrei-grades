@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { GraduationCap, Github, Mail, Heart, Coffee } from "lucide-react";
+import {GraduationCap, Github, Mail, Heart, Coffee, Linkedin} from "lucide-react";
+import LinkedIn from "next-auth/providers/linkedin";
 
 export default function Footer() {
     const currentYear = new Date().getFullYear();
@@ -69,13 +70,22 @@ export default function Footer() {
                         <h3 className="font-semibold">Contact</h3>
                         <div className="flex gap-4">
                             <a
-                                href="https://github.com"
+                                href="https://github.com/FrostBreker/myefrei-grades"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-muted-foreground hover:text-primary transition-colors"
                                 aria-label="GitHub"
                             >
                                 <Github className="h-5 w-5" />
+                            </a>
+                            <a
+                                href="https://www.linkedin.com/in/donatien-faraut/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-muted-foreground hover:text-primary transition-colors"
+                                aria-label="Linkedin"
+                            >
+                                <Linkedin className="h-5 w-5" />
                             </a>
                             <a
                                 href="mailto:donatien.faraut@efrei.net"

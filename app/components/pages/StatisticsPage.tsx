@@ -208,11 +208,9 @@ function StatsCard({ stats, userAverage, level }: { stats: GroupStats; userAvera
 
                         {/* Min/Max */}
                         <div className="text-center p-2 md:p-3 bg-muted/50 rounded-lg">
-                            <div className="text-xs text-muted-foreground mb-1">Min / Max</div>
+                            <div className="text-xs text-muted-foreground mb-1">Max</div>
                             <div className="text-lg md:text-xl font-bold">
-                                <span className="text-red-500">{stats.averages.global.min?.toFixed(1) ?? "-"}</span>
-                                {" / "}
-                                <span className="text-green-500">{stats.averages.global.max?.toFixed(1) ?? "-"}</span>
+                                <span className="text-green-500">{stats.averages.global.max?.toFixed(2) ?? "-"}</span>
                             </div>
                         </div>
                     </div>
@@ -224,7 +222,7 @@ function StatsCard({ stats, userAverage, level }: { stats: GroupStats; userAvera
                 <Accordion type="multiple" className="space-y-2">
                     {stats.averages.byUE.map((ue) => (
                         <AccordionItem key={ue.ueId} value={ue.ueId} className="border rounded-lg">
-                            <AccordionTrigger className="px-3 md:px-4 hover:no-underline">
+                            <AccordionTrigger className="px-3 md:px-4 hover:no-underline cursor-pointer">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full mr-2 md:mr-4 gap-2">
                                     <div className="flex flex-wrap items-center gap-1 md:gap-2">
                                         <Badge variant="outline" className="text-xs">{ue.ueCode}</Badge>
@@ -254,7 +252,7 @@ function StatsCard({ stats, userAverage, level }: { stats: GroupStats; userAvera
                                                     Moy: {mod.stats.average?.toFixed(2) ?? "-"}
                                                 </span>
                                                 <span className="text-muted-foreground hidden sm:inline">
-                                                    Min: {mod.stats.min?.toFixed(1) ?? "-"} / Max: {mod.stats.max?.toFixed(1) ?? "-"}
+                                                    Max: {mod.stats.max?.toFixed(2) ?? "-"}
                                                 </span>
                                                 <RankDisplay rank={mod.stats.rank} total={mod.stats.totalWithGrades} />
                                             </div>
@@ -332,7 +330,7 @@ export default function StatisticsPage({ initialSemesters }: StatisticsPageProps
                                 if (sem) setSelectedSemester(sem);
                             }}
                         >
-                            <SelectTrigger className="w-full sm:w-[280px]">
+                            <SelectTrigger className="w-full sm:w-[280px] cursor-pointer">
                                 <SelectValue placeholder="Sélectionner un semestre" />
                             </SelectTrigger>
                             <SelectContent>

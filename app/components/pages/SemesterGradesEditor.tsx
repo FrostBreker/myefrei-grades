@@ -181,7 +181,7 @@ export default function SemesterGradesEditor({ semester, onBack, onUpdate }: Sem
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-2 md:gap-4">
-                    <Button variant="ghost" size="sm" onClick={onBack} className="px-2 md:px-4">
+                    <Button variant="ghost" size="sm" onClick={onBack} className="px-2 md:px-4 cursor-pointer">
                         <ArrowLeft className="h-4 w-4 mr-1 md:mr-2" />
                         <span className="hidden sm:inline">Retour</span>
                     </Button>
@@ -196,7 +196,7 @@ export default function SemesterGradesEditor({ semester, onBack, onUpdate }: Sem
                     onClick={handleSave}
                     disabled={saving || !hasChanges || semester.locked}
                     size="default"
-                    className="w-full sm:w-auto"
+                    className="w-full sm:w-auto cursor-pointer"
                 >
                     {saving ? (
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -266,7 +266,7 @@ export default function SemesterGradesEditor({ semester, onBack, onUpdate }: Sem
 
                         return (
                             <AccordionItem key={ue.id} value={ue.id} className="border rounded-lg">
-                                <AccordionTrigger className="px-3 md:px-6 hover:no-underline">
+                                <AccordionTrigger className="px-3 md:px-6 hover:no-underline cursor-pointer">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full mr-2 md:mr-4 gap-2">
                                         <div className="flex flex-wrap items-center gap-1 md:gap-3">
                                             <Badge variant="outline" className="text-xs">{ue.code}</Badge>
@@ -467,7 +467,7 @@ export default function SemesterGradesEditor({ semester, onBack, onUpdate }: Sem
                         onClick={handleSave}
                         disabled={saving}
                         size="lg"
-                        className="shadow-lg w-full md:w-auto"
+                        className="shadow-lg w-full md:w-auto cursor-pointer"
                     >
                         {saving ? (
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
