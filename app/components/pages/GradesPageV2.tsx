@@ -475,7 +475,7 @@ export default function GradesPageV2({ initialProfile, initialSemesters, userEma
                                                         )}
                                                         <Button
                                                             onClick={() => setEditingSemester(s1)}
-                                                            className="w-full"
+                                                            className="w-full  cursor-pointer"
                                                         >
                                                             <Edit className="h-4 w-4 mr-2" />
                                                             Gérer mes notes
@@ -600,7 +600,7 @@ export default function GradesPageV2({ initialProfile, initialSemesters, userEma
                                                         )}
                                                         <Button
                                                             onClick={() => setEditingSemester(s2)}
-                                                            className="w-full"
+                                                            className="w-full cursor-pointer"
                                                         >
                                                             <Edit className="h-4 w-4 mr-2" />
                                                             Gérer mes notes
