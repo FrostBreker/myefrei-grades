@@ -34,10 +34,10 @@ const GRADE_TYPES: { value: GradeType; label: string }[] = [
     { value: "TP", label: "TP - Travaux Pratiques" },
     { value: "TD", label: "TD - Travaux Dirigés" },
     { value: "PRJ", label: "PRJ - Projet" },
-    { value: "DE", label: "DE - Devoir à la Maison" },
+    { value: "DE", label: "DE - Devoir Écrit" },
     { value: "CC", label: "CC - Contrôle Continu" },
-    { value: "CO", label: "CO - Contrôle" },
-    { value: "CE", label: "CE - Contrôle Final" },
+    { value: "CO", label: "CO - Contrôle Oral" },
+    { value: "CE", label: "CE - Contrôle Écrit" },
     { value: "TOEIC", label: "TOEIC" },
     { value: "AUTRE", label: "Autre" }
 ];
