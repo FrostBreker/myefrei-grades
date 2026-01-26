@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import {useSession, signIn, signOut} from "next-auth/react";
-import {Fragment, useState} from "react";
+import {Fragment, useState, useEffect} from "react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -20,17 +20,48 @@ import {
     SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, Home, FileText, BarChart3, Menu, Shield } from "lucide-react";
+import { GraduationCap, Home, FileText, BarChart3, Menu, Shield, Users } from "lucide-react";
 import { useIsAdmin } from "@lib/hooks/useIsAdmin";
+
+interface UserProfile {
+    firstName?: string;
+    lastName?: string;
+}
 
 function Navbar() {
     const { data: session, status } = useSession();
     const { isAdmin } = useIsAdmin();
     const user = session?.user;
     const [isOpen, setIsOpen] = useState(false);
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
+    // Fetch user profile to get firstName and lastName
+    useEffect(() => {
+        if (user?.email) {
+            fetch("/api/user/profile")
+                .then(res => res.json())
+                .then(data => {
+                    if (data.firstName && data.lastName) {
+                        setUserProfile({ firstName: data.firstName, lastName: data.lastName });
+                    }
+                })
+                .catch(err => console.error("Error fetching profile:", err));
+        }
+    }, [user?.email]);
+
+    // Get display name: firstName + lastName if available, otherwise email prefix
+    const getDisplayName = () => {
+        if (userProfile?.firstName && userProfile?.lastName) {
+            return `${userProfile.firstName} ${userProfile.lastName}`;
+        }
+        return user?.email?.split("@")[0] || "";
+    };
 
     // Get user initials for avatar fallback
     const getUserInitials = (email?: string | null) => {
+        if (userProfile?.firstName && userProfile?.lastName) {
+            return `${userProfile.firstName.charAt(0)}${userProfile.lastName.charAt(0)}`.toUpperCase();
+        }
         if (!email) return "U";
         return email.charAt(0).toUpperCase();
     };
@@ -107,7 +138,7 @@ function Navbar() {
                                         </Avatar>
                                         <div className="flex flex-col">
                                             <p className="text-sm font-medium">
-                                                {user.email?.split("@")[0]}
+                                                {getDisplayName()}
                                             </p>
                                             <p className="text-xs text-muted-foreground">
                                                 {user.email}
@@ -138,13 +169,24 @@ function Navbar() {
                                         <div className="flex flex-col gap-2">
                                             {isAdmin && (
                                                 <>
+                                                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2">
+                                                        Administration
+                                                    </p>
+                                                    <Link
+                                                        href="/admin/users"
+                                                        onClick={() => setIsOpen(false)}
+                                                        className="flex items-center gap-3 text-base font-medium transition-colors text-primary hover:text-primary/80 p-2 rounded-md hover:bg-accent"
+                                                    >
+                                                        <Users className="h-5 w-5" />
+                                                        Utilisateurs
+                                                    </Link>
                                                     <Link
                                                         href="/admin/year-templates"
                                                         onClick={() => setIsOpen(false)}
                                                         className="flex items-center gap-3 text-base font-medium transition-colors text-primary hover:text-primary/80 p-2 rounded-md hover:bg-accent"
                                                     >
                                                         <Shield className="h-5 w-5" />
-                                                        Administration
+                                                        Templates d&apos;année
                                                     </Link>
                                                     <div className="h-px bg-border my-2" />
                                                 </>
@@ -154,7 +196,7 @@ function Navbar() {
                                                 onClick={() => setIsOpen(false)}
                                                 className="flex items-center gap-3 text-base font-medium transition-colors hover:text-primary p-2 rounded-md hover:bg-accent"
                                             >
-                                                Profil
+                                                Mon Profil
                                             </Link>
                                             <Link
                                                 href="/settings"
@@ -207,14 +249,14 @@ function Navbar() {
                                     </AvatarFallback>
                                 </Avatar>
                                 <span className="hidden lg:block text-sm font-medium">
-                                    {user.email?.split("@")[0]}
+                                    {getDisplayName()}
                                 </span>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56">
                                 <DropdownMenuLabel>
                                     <div className="flex flex-col space-y-1">
                                         <p className="text-sm font-medium leading-none">
-                                            {user.email?.split("@")[0]}
+                                            {getDisplayName()}
                                         </p>
                                         <p className="text-xs leading-none text-muted-foreground">
                                             {user.email}
@@ -224,20 +266,29 @@ function Navbar() {
                                 <DropdownMenuSeparator />
                                 {isAdmin && (
                                     <>
+                                        <DropdownMenuLabel className="text-xs text-muted-foreground">
+                                            Administration
+                                        </DropdownMenuLabel>
+                                        <DropdownMenuItem asChild className="cursor-pointer">
+                                            <Link href="/admin/users" className="flex items-center gap-2">
+                                                <Users className="h-4 w-4" />
+                                                Utilisateurs
+                                            </Link>
+                                        </DropdownMenuItem>
                                         <DropdownMenuItem asChild className="cursor-pointer">
                                             <Link href="/admin/year-templates" className="flex items-center gap-2">
                                                 <Shield className="h-4 w-4" />
-                                                Administration
+                                                Templates d&apos;année
                                             </Link>
                                         </DropdownMenuItem>
                                         <DropdownMenuSeparator />
                                     </>
                                 )}
-                                <DropdownMenuItem className={"cursor-pointer"}>
-                                    Profil
+                                <DropdownMenuItem asChild className="cursor-pointer">
+                                    <Link href="/profile">Mon Profil</Link>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className={"cursor-pointer"}>
-                                    Paramètres
+                                <DropdownMenuItem asChild className="cursor-pointer">
+                                    <Link href="/settings">Paramètres</Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem className="text-red-600 p-0">

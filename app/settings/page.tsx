@@ -2,16 +2,15 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
-import SetupPage from "@/app/components/pages/SetupPage";
-import { getAcademicProfile } from "@lib/grades/profileService";
+import SettingsPage from "@/app/components/pages/SettingsPage";
 import clientPromise from "@lib/mongodb";
 
 export const metadata: Metadata = {
-    title: "Configuration - MyEFREI Grades",
-    description: "Configure ton profil académique",
+    title: "Paramètres - MyEFREI Grades",
+    description: "Gère tes préférences et ton compte",
 };
 
-export default async function Setup() {
+export default async function Settings() {
     const session = await getServerSession(authOptions);
 
     if (!session || !session.user?.email) {
@@ -32,13 +31,5 @@ export default async function Setup() {
         redirect("/onboarding");
     }
 
-    // Check if user already has a profile
-    const profile = await getAcademicProfile(user._id.toString());
-
-    // If profile exists with paths, redirect to grades
-    if (profile && profile.paths.length > 0) {
-        redirect("/grades");
-    }
-
-    return <SetupPage />;
+    return <SettingsPage userEmail={session.user.email} />;
 }

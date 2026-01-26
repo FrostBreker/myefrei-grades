@@ -28,6 +28,10 @@ export default function SetupPage() {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const cursusLoadedRef = useRef(false);
+    const profileLoadedRef = useRef(false);
+
+    // User info for display
+    const [userName, setUserName] = useState("");
 
     // Available options from DB
     const [availableCursus, setAvailableCursus] = useState<string[]>([]);
@@ -38,6 +42,26 @@ export default function SetupPage() {
     const [cursus, setCursus] = useState<Cursus | null>(null);
     const [filiere, setFiliere] = useState<Filiere | null>(null);
     const [groupe, setGroupe] = useState<Groupe | null>(null);
+
+    // Load user name for display
+    useEffect(() => {
+        if (profileLoadedRef.current) return;
+        profileLoadedRef.current = true;
+
+        const loadProfile = async () => {
+            try {
+                const response = await fetch("/api/user/profile");
+                const data = await response.json();
+                if (data.firstName && data.lastName) {
+                    setUserName(`${data.firstName} ${data.lastName}`);
+                }
+            } catch (error) {
+                console.error("Error loading profile:", error);
+            }
+        };
+
+        loadProfile();
+    }, []);
 
     // Load available cursus on mount (once only)
     useEffect(() => {
@@ -150,6 +174,7 @@ export default function SetupPage() {
         }
     };
 
+
     return (
         <div className="min-h-screen bg-linear-to-b from-background to-muted py-12">
             <div className="px-4 max-w-3xl mx-auto">
@@ -159,10 +184,10 @@ export default function SetupPage() {
                         <GraduationCap className="h-16 w-16 text-primary"/>
                     </div>
                     <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
-                        Configure ton profil
+                        Configure ton cursus
                     </h1>
                     <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                        Pour personnaliser ton expérience, dis-nous où tu en es dans ton cursus ! 🎓
+                        {userName ? `Bienvenue ${userName} ! ` : ""}Dis-nous où tu en es dans ton cursus ! 🎓
                     </p>
                     <div className="flex justify-center gap-2 pt-4">
                         {[1, 2, 3].map((s) => (

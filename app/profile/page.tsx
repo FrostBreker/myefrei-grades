@@ -2,17 +2,16 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
-import GradesPageV2 from "@/app/components/pages/GradesPageV2";
+import ProfilePage from "@/app/components/pages/ProfilePage";
 import { getAcademicProfile } from "@lib/grades/profileService";
-import { getUserSemesters } from "@lib/grades/semesterService";
 import clientPromise from "@lib/mongodb";
 
 export const metadata: Metadata = {
-    title: "Mes Notes - MyEFREI Grades",
-    description: "Consulte et gère tes notes EFREI facilement",
+    title: "Mon Profil - MyEFREI Grades",
+    description: "Consulte et gère ton profil étudiant",
 };
 
-export default async function Grades() {
+export default async function Profile() {
     const session = await getServerSession(authOptions);
 
     if (!session || !session.user?.email) {
@@ -33,21 +32,23 @@ export default async function Grades() {
         redirect("/onboarding");
     }
 
-    // Get profile and semesters server-side
-    const profile = await getAcademicProfile(user._id.toString());
+    // Get academic profile
+    const academicProfile = await getAcademicProfile(user._id.toString());
 
-    // If no profile or no paths, redirect to setup
-    if (!profile || profile.paths.length === 0) {
-        redirect("/setup");
-    }
-
-    const semesters = await getUserSemesters(user._id.toString());
+    // Prepare user profile data
+    const userProfile = {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        studentNumber: user.studentNumber,
+        email: user.email,
+        image: user.image || session.user.image || "",
+        createdAt: user.createdAt?.toISOString() || new Date().toISOString(),
+    };
 
     return (
-        <GradesPageV2
-            initialProfile={profile}
-            initialSemesters={semesters}
-            userEmail={session.user.email}
+        <ProfilePage
+            initialProfile={userProfile}
+            initialAcademicProfile={academicProfile}
         />
     );
 }

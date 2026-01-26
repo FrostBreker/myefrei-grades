@@ -29,12 +29,18 @@ export async function getUserBySession(session: Session | null, request: NextReq
         await db.collection('users').insertOne(userDB);
     } else if (userDB) {
         // Update user info
-        const newData = {
+        const newData: Partial<UserDB> = {
             image: session.user.image || '',
             clientIP,
             lastLogin: new Date(),
         };
-        // We update the data at each login to maje sure we got the freshest info
+
+        // Add createdAt if it doesn't exist (for existing users before this field was added)
+        if (!userDB.createdAt) {
+            newData.createdAt = new Date();
+        }
+
+        // We update the data at each login to make sure we got the freshest info
         await db.collection('users').updateOne(
             {email: session.user.email},
             {$set: newData}
@@ -43,7 +49,7 @@ export async function getUserBySession(session: Session | null, request: NextReq
         userDB = {
             ...userDB,
             ...newData,
-        };
+        } as UserDB;
     }
 
     if (!userDB) return null;
@@ -55,6 +61,9 @@ export async function getUserBySession(session: Session | null, request: NextReq
         clientIP: userDB.clientIP,
         createdAt: userDB.createdAt,
         lastLogin: userDB.lastLogin,
+        firstName: userDB.firstName,
+        lastName: userDB.lastName,
+        studentNumber: userDB.studentNumber,
     };
 }
 

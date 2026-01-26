@@ -1,6 +1,7 @@
 "use client";
 import {User} from "@lib/user/getUserBySession";
 import {useSession, signIn} from "next-auth/react";
+import {useEffect, useState} from "react";
 import Link from "next/link";
 import {Button} from "@/components/ui/button";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
@@ -17,9 +18,37 @@ import {
     ArrowRight
 } from "lucide-react";
 
+interface UserProfile {
+    firstName?: string;
+    lastName?: string;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function HomePage({initialUserData}: { initialUserData: User | null }) {
     const {data: session, status} = useSession();
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
+    // Fetch user profile to get firstName and lastName
+    useEffect(() => {
+        if (session?.user?.email) {
+            fetch("/api/user/profile")
+                .then(res => res.json())
+                .then(data => {
+                    if (data.firstName && data.lastName) {
+                        setUserProfile({ firstName: data.firstName, lastName: data.lastName });
+                    }
+                })
+                .catch(err => console.error("Error fetching profile:", err));
+        }
+    }, [session?.user?.email]);
+
+    // Get display name: firstName if available, otherwise email prefix
+    const getDisplayName = () => {
+        if (userProfile?.firstName) {
+            return userProfile.firstName;
+        }
+        return session?.user?.email?.split("@")[0] || "";
+    };
 
     const features = [
         {
@@ -239,7 +268,7 @@ function HomePage({initialUserData}: { initialUserData: User | null }) {
                                 <GraduationCap className="h-8 w-8 text-primary"/>
                             </div>
                             <h3 className="text-3xl md:text-4xl font-bold">
-                                Salut {session.user?.email?.split("@")[0]} ! 👋
+                                Salut {getDisplayName()} ! 👋
                             </h3>
                             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
                                 Content de te revoir ! Va voir tes notes et tes stats mises à jour.
