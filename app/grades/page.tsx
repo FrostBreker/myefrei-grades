@@ -28,6 +28,11 @@ export default async function Grades() {
         redirect("/");
     }
 
+    // Check if user has completed onboarding (has personal info)
+    if (!user.firstName || !user.lastName || !user.studentNumber) {
+        redirect("/onboarding");
+    }
+
     // Get profile and semesters server-side
     const profile = await getAcademicProfile(user._id.toString());
 

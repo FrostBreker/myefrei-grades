@@ -7,6 +7,9 @@ export interface User {
     clientIP: string;
     createdAt: Date;
     lastLogin?: Date;
+    firstName?: string;
+    lastName?: string;
+    studentNumber?: string;
 }
 
 export interface UserDB {
@@ -16,4 +19,7 @@ export interface UserDB {
     clientIP: string;
     createdAt: Date;
     lastLogin?: Date;
+    firstName?: string;
+    lastName?: string;
+    studentNumber?: string;
 }

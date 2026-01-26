@@ -55,6 +55,9 @@ export async function getUserBySession(session: Session | null, request: NextReq
         clientIP: userDB.clientIP,
         createdAt: userDB.createdAt,
         lastLogin: userDB.lastLogin,
+        firstName: userDB.firstName,
+        lastName: userDB.lastName,
+        studentNumber: userDB.studentNumber,
     };
 }
 
