@@ -144,16 +144,23 @@ export async function PUT(request: NextRequest) {
         const formattedLastName = formatLastName(lastName);
         const trimmedStudentNumber = studentNumber.trim();
 
+        // Vérifier si l'utilisateur a déjà un createdAt
+        const existingUser = await db.collection('users').findOne({ email: session.user.email });
+        const updateData: Record<string, unknown> = {
+            firstName: formattedFirstName,
+            lastName: formattedLastName,
+            studentNumber: trimmedStudentNumber,
+        };
+
+        // Ajouter createdAt si il n'existe pas
+        if (existingUser && !existingUser.createdAt) {
+            updateData.createdAt = new Date();
+        }
+
         // Mettre à jour le profil
         await db.collection('users').updateOne(
             { email: session.user.email },
-            {
-                $set: {
-                    firstName: formattedFirstName,
-                    lastName: formattedLastName,
-                    studentNumber: trimmedStudentNumber,
-                }
-            }
+            { $set: updateData }
         );
 
         return NextResponse.json({
