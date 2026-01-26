@@ -34,7 +34,7 @@ const getGradeTypeLabel = (type: string): string => {
         TP: "Travaux Pratiques",
         TD: "Travaux Dirigés",
         PRJ: "Projet",
-        DE: "Devoir sur table",
+        DE: "Devoir Écrit",
         CC: "Contrôle Continu",
         CO: "Contrôle Oral",
         CE: "Contrôle Écrit",
