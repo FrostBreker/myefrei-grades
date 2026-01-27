@@ -49,19 +49,10 @@ export default function SetupPage() {
         const checkExistingProfile = async () => {
             try {
                 const response = await fetch("/api/grades/setup-profile");
-
-                if (!response.ok) {
-                    console.error("Error checking profile, status:", response.status);
-                    setCheckingProfile(false);
-                    return;
-                }
-
                 const data = await response.json();
-                console.log("Profile check result:", data);
 
-                if (data.exists === true) {
+                if (data.exists) {
                     // User already has a profile, redirect to grades
-                    console.log("Profile exists, redirecting to grades");
                     router.push("/grades");
                     return;
                 }
@@ -193,17 +184,13 @@ export default function SetupPage() {
                 body: JSON.stringify({cursus, filiere, groupe})
             });
 
-            const data = await response.json();
-
             if (response.ok) {
                 router.push("/grades");
             } else if (response.status === 409) {
                 // Profile already exists, redirect to grades
-                console.log("Profile already exists, redirecting to grades");
                 router.push("/grades");
             } else {
-                console.error("Setup profile error:", data);
-                alert(`Erreur: ${data.error || "Erreur inconnue"}`);
+                throw new Error("Failed to setup profile");
             }
         } catch (error) {
             console.error("Error setting up profile:", error);

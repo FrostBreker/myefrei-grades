@@ -92,6 +92,64 @@ function calculateUEAverage(modules: { average?: number | null }[]): number | nu
     return Math.round((sum / validModules.length) * 100) / 100;
 }
 
+// Normalize module code by removing group-specific suffixes
+// SM102PM-2526PSA01 -> SM102-2526PSA01
+// SM102I-2526PSA01 -> SM102-2526PSA01
+// SM102-2526PSA01 -> SM102-2526PSA01 (unchanged)
+function normalizeModuleCode(code: string): string {
+    // Pattern: extract base code before the dash, remove known suffixes
+    const dashIndex = code.indexOf('-');
+    if (dashIndex === -1) return code;
+
+    const beforeDash = code.substring(0, dashIndex);
+    const afterDash = code.substring(dashIndex);
+
+    // Remove known suffixes: PM, I, P (but not if it's part of the base code)
+    // We check from the end to avoid removing letters that are part of the code
+    const suffixes = ['PM', 'I', 'P'];
+    let normalized = beforeDash;
+
+    for (const suffix of suffixes) {
+        if (normalized.endsWith(suffix)) {
+            // Check if removing this suffix leaves a valid code
+            const withoutSuffix = normalized.substring(0, normalized.length - suffix.length);
+            // Only remove if there's still content left (avoid edge cases)
+            if (withoutSuffix.length > 0) {
+                normalized = withoutSuffix;
+                break;
+            }
+        }
+    }
+
+    return normalized + afterDash;
+}
+
+// Normalize UE code by removing group-specific suffixes
+// UE11P -> UE11
+// UE13P -> UE13
+// UE11 -> UE11 (unchanged)
+function normalizeUECode(code: string): string {
+    const suffixes = ['PM', 'I', 'P'];
+    let normalized = code;
+
+    for (const suffix of suffixes) {
+        if (normalized.endsWith(suffix)) {
+            const withoutSuffix = normalized.substring(0, normalized.length - suffix.length);
+            if (withoutSuffix.length > 0) {
+                normalized = withoutSuffix;
+                break;
+            }
+        }
+    }
+
+    return normalized;
+}
+
+// Check if a module code matches a normalized code
+function moduleCodesMatch(code1: string, code2: string): boolean {
+    return normalizeModuleCode(code1) === normalizeModuleCode(code2);
+}
+
 export async function GET(request: Request) {
     try {
         const session = await getServerSession(authOptions);
@@ -183,88 +241,198 @@ export async function GET(request: Request) {
             }))
         }));
 
+        // Get user's module IDs for filtering
+        const userModuleIds = new Set(
+            userSemester.ues.flatMap(ue => ue.modules.map(m => m.id))
+        );
+
         // Helper function to calculate stats for a group of semesters
-        const calculateGroupStats = (semesters: UserSemesterDB[], groupName: string): GroupStats => {
+        const calculateGroupStats = (
+            semesters: UserSemesterDB[],
+            groupName: string,
+            shouldMergeModules: boolean
+        ): GroupStats => {
             // Global averages
             const globalAverages = semesters.map(s => s.average);
 
-            // UE stats
-            const ueStatsMap = new Map<string, {
-                code: string;
-                name: string;
-                averages: (number | null)[];
-                modules: Map<string, { code: string; name: string; averages: (number | null)[] }>
-            }>();
+            if (shouldMergeModules) {
+                // For filiere and cursus: merge UEs with same normalized code
+                const mergedUEMap = new Map<string, {
+                    ueIds: Set<string>;
+                    code: string;
+                    name: string;
+                    averages: (number | null)[];
+                    modules: Map<string, {
+                        id: string;
+                        code: string;
+                        name: string;
+                        averages: (number | null)[];
+                        normalizedCode: string;
+                    }>;
+                }>();
 
-            // Collect all UE and module averages
-            for (const sem of semesters) {
-                for (const ue of sem.ues) {
-                    if (!ueStatsMap.has(ue.id)) {
-                        ueStatsMap.set(ue.id, {
-                            code: ue.code,
-                            name: ue.name,
-                            averages: [],
-                            modules: new Map()
-                        });
-                    }
-                    const ueData = ueStatsMap.get(ue.id)!;
-                    const ueAvg = ue.average ?? calculateUEAverage(ue.modules);
-                    ueData.averages.push(ueAvg);
+                // First pass: collect all UEs and modules by normalized UE code
+                for (const sem of semesters) {
+                    for (const ue of sem.ues) {
+                        const normalizedUECode = normalizeUECode(ue.code);
 
-                    for (const mod of ue.modules) {
-                        if (!ueData.modules.has(mod.id)) {
-                            ueData.modules.set(mod.id, {
-                                code: mod.code,
-                                name: mod.name,
-                                averages: []
+                        if (!mergedUEMap.has(normalizedUECode)) {
+                            mergedUEMap.set(normalizedUECode, {
+                                ueIds: new Set(),
+                                code: normalizedUECode,
+                                name: ue.name,
+                                averages: [],
+                                modules: new Map()
                             });
                         }
-                        ueData.modules.get(mod.id)!.averages.push(mod.average ?? null);
+
+                        const mergedUE = mergedUEMap.get(normalizedUECode)!;
+                        mergedUE.ueIds.add(ue.id);
+
+                        const ueAvg = ue.average ?? calculateUEAverage(ue.modules);
+                        mergedUE.averages.push(ueAvg);
+
+                        // Collect modules
+                        for (const mod of ue.modules) {
+                            const normalizedModCode = normalizeModuleCode(mod.code);
+
+                            if (!mergedUE.modules.has(normalizedModCode)) {
+                                mergedUE.modules.set(normalizedModCode, {
+                                    id: mod.id,
+                                    code: mod.code,
+                                    name: mod.name,
+                                    averages: [],
+                                    normalizedCode: normalizedModCode
+                                });
+                            }
+                            mergedUE.modules.get(normalizedModCode)!.averages.push(mod.average ?? null);
+                        }
                     }
                 }
-            }
 
-            // Build UE stats with user's rank
-            const byUE: UEStats[] = [];
-            for (const [ueId, ueData] of ueStatsMap) {
-                const userUE = userUEAverages.find(u => u.id === ueId);
-                const userUEAvg = userUE?.average ?? null;
+                // Second pass: filter to only user's UEs and build stats
+                const byUE: UEStats[] = [];
 
-                const moduleStats: ModuleStats[] = [];
-                for (const [modId, modData] of ueData.modules) {
-                    const userMod = userUE?.modules.find(m => m.id === modId);
-                    moduleStats.push({
-                        moduleId: modId,
-                        moduleCode: modData.code,
-                        moduleName: modData.name,
-                        stats: calculateStats(modData.averages, userMod?.average ?? null)
+                for (const userUE of userUEAverages) {
+                    const normalizedUECode = normalizeUECode(userUE.code);
+                    const mergedUE = mergedUEMap.get(normalizedUECode);
+
+                    if (!mergedUE) continue; // Skip if UE not found
+
+                    // Build module stats - only for modules user has
+                    const moduleStats: ModuleStats[] = [];
+
+                    for (const userMod of userUE.modules) {
+                        const normalizedModCode = normalizeModuleCode(userMod.code);
+                        const mergedMod = mergedUE.modules.get(normalizedModCode);
+
+                        if (mergedMod) {
+                            moduleStats.push({
+                                moduleId: userMod.id,
+                                moduleCode: userMod.code, // Use user's code
+                                moduleName: userMod.name,
+                                stats: calculateStats(mergedMod.averages, userMod.average)
+                            });
+                        }
+                    }
+
+                    byUE.push({
+                        ueId: userUE.id,
+                        ueCode: userUE.code, // Use user's UE code
+                        ueName: userUE.name,
+                        stats: calculateStats(mergedUE.averages, userUE.average),
+                        modules: moduleStats
                     });
                 }
 
-                byUE.push({
-                    ueId,
-                    ueCode: ueData.code,
-                    ueName: ueData.name,
-                    stats: calculateStats(ueData.averages, userUEAvg),
-                    modules: moduleStats
-                });
-            }
+                return {
+                    name: groupName,
+                    totalUsers: semesters.length,
+                    averages: {
+                        global: calculateStats(globalAverages, userGlobalAvg),
+                        byUE
+                    }
+                };
 
-            return {
-                name: groupName,
-                totalUsers: semesters.length,
-                averages: {
-                    global: calculateStats(globalAverages, userGlobalAvg),
-                    byUE
+            } else {
+                // Original logic for groupe (no merging)
+                const ueStatsMap = new Map<string, {
+                    code: string;
+                    name: string;
+                    averages: (number | null)[];
+                    modules: Map<string, { code: string; name: string; averages: (number | null)[] }>
+                }>();
+
+                // Collect all UE and module averages
+                for (const sem of semesters) {
+                    for (const ue of sem.ues) {
+                        if (!ueStatsMap.has(ue.id)) {
+                            ueStatsMap.set(ue.id, {
+                                code: ue.code,
+                                name: ue.name,
+                                averages: [],
+                                modules: new Map()
+                            });
+                        }
+                        const ueData = ueStatsMap.get(ue.id)!;
+                        const ueAvg = ue.average ?? calculateUEAverage(ue.modules);
+                        ueData.averages.push(ueAvg);
+
+                        for (const mod of ue.modules) {
+                            if (!ueData.modules.has(mod.id)) {
+                                ueData.modules.set(mod.id, {
+                                    code: mod.code,
+                                    name: mod.name,
+                                    averages: []
+                                });
+                            }
+                            ueData.modules.get(mod.id)!.averages.push(mod.average ?? null);
+                        }
+                    }
                 }
-            };
+
+                // Build UE stats with user's rank
+                const byUE: UEStats[] = [];
+                for (const [ueId, ueData] of ueStatsMap) {
+                    const userUE = userUEAverages.find(u => u.id === ueId);
+                    const userUEAvg = userUE?.average ?? null;
+
+                    const moduleStats: ModuleStats[] = [];
+                    for (const [modId, modData] of ueData.modules) {
+                        const userMod = userUE?.modules.find(m => m.id === modId);
+                        moduleStats.push({
+                            moduleId: modId,
+                            moduleCode: modData.code,
+                            moduleName: modData.name,
+                            stats: calculateStats(modData.averages, userMod?.average ?? null)
+                        });
+                    }
+
+                    byUE.push({
+                        ueId,
+                        ueCode: ueData.code,
+                        ueName: ueData.name,
+                        stats: calculateStats(ueData.averages, userUEAvg),
+                        modules: moduleStats
+                    });
+                }
+
+                return {
+                    name: groupName,
+                    totalUsers: semesters.length,
+                    averages: {
+                        global: calculateStats(globalAverages, userGlobalAvg),
+                        byUE
+                    }
+                };
+            }
         };
 
         // Calculate stats for each level
         const stats: StatsResult = {
-            groupe: calculateGroupStats(groupeSemesters, userSemester.groupe),
-            filiere: calculateGroupStats(filiereSemesters, userSemester.filiere),
-            cursus: calculateGroupStats(cursusSemesters, userSemester.cursus)
+            groupe: calculateGroupStats(groupeSemesters, userSemester.groupe, false),
+            filiere: calculateGroupStats(filiereSemesters, userSemester.filiere, true),
+            cursus: calculateGroupStats(cursusSemesters, userSemester.cursus, true)
         };
 
         return NextResponse.json({

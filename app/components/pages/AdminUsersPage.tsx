@@ -15,13 +15,6 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import {
     Users,
     Search,
     Loader2,
@@ -30,19 +23,8 @@ import {
     Mail,
     GraduationCap,
     Hash,
-    Calendar,
-    Settings,
-    BookOpen
+    Calendar
 } from "lucide-react";
-
-interface TemplateOption {
-    cursus: string;
-    filiere: string;
-    groupe: string;
-    academicYear: string;
-    hasS1: boolean;
-    hasS2: boolean;
-}
 
 interface User {
     _id: string;
@@ -77,14 +59,6 @@ export default function AdminUsersPage() {
         total: 0,
         totalPages: 0,
     });
-
-    // Change path dialog states
-    const [changePathDialogOpen, setChangePathDialogOpen] = useState(false);
-    const [selectedUser, setSelectedUser] = useState<User | null>(null);
-    const [templateOptions, setTemplateOptions] = useState<TemplateOption[]>([]);
-    const [loadingTemplates, setLoadingTemplates] = useState(false);
-    const [selectedTemplate, setSelectedTemplate] = useState<TemplateOption | null>(null);
-    const [changingPath, setChangingPath] = useState(false);
 
     const fetchUsers = useCallback(async () => {
         setLoading(true);
@@ -123,79 +97,6 @@ export default function AdminUsersPage() {
 
     const handlePageChange = (newPage: number) => {
         setPagination(prev => ({ ...prev, page: newPage }));
-    };
-
-    const loadTemplates = async () => {
-        setLoadingTemplates(true);
-        try {
-            const response = await fetch("/api/admin/year-templates");
-            const data = await response.json();
-
-            if (data.success) {
-                interface TemplateResponse {
-                    cursus: string;
-                    filiere: string;
-                    groupe: string;
-                    academicYear: string;
-                    semesters: { semester: number }[];
-                }
-                const options: TemplateOption[] = data.templates.map((template: TemplateResponse) => ({
-                    cursus: template.cursus,
-                    filiere: template.filiere,
-                    groupe: template.groupe,
-                    academicYear: template.academicYear,
-                    hasS1: template.semesters.some((s: { semester: number }) => s.semester === 1),
-                    hasS2: template.semesters.some((s: { semester: number }) => s.semester === 2)
-                }));
-                setTemplateOptions(options);
-            }
-        } catch (error) {
-            console.error("Error loading templates:", error);
-        } finally {
-            setLoadingTemplates(false);
-        }
-    };
-
-    const openChangePathDialog = (user: User) => {
-        setSelectedUser(user);
-        setSelectedTemplate(null);
-        setChangePathDialogOpen(true);
-        loadTemplates();
-    };
-
-    const handleChangePath = async () => {
-        if (!selectedUser || !selectedTemplate) return;
-
-        setChangingPath(true);
-        try {
-            const response = await fetch(`/api/admin/users/${selectedUser._id}/path`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    cursus: selectedTemplate.cursus,
-                    filiere: selectedTemplate.filiere,
-                    groupe: selectedTemplate.groupe,
-                    academicYear: selectedTemplate.academicYear
-                })
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                alert("✅ Parcours mis à jour avec succès !");
-                setChangePathDialogOpen(false);
-                setSelectedUser(null);
-                setSelectedTemplate(null);
-                fetchUsers(); // Refresh users list
-            } else {
-                alert(`❌ Erreur : ${data.error}`);
-            }
-        } catch (error) {
-            console.error("Error changing path:", error);
-            alert("❌ Erreur lors du changement de parcours");
-        } finally {
-            setChangingPath(false);
-        }
     };
 
     const getUserInitials = (user: User) => {
@@ -300,7 +201,6 @@ export default function AdminUsersPage() {
                                                 <TableHead>Parcours</TableHead>
                                                 <TableHead>Inscrit le</TableHead>
                                                 <TableHead>Dernière connexion</TableHead>
-                                                <TableHead className="text-right">Actions</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -355,17 +255,6 @@ export default function AdminUsersPage() {
                                                     <TableCell className="text-sm">
                                                         {formatDate(user.lastLogin)}
                                                     </TableCell>
-                                                    <TableCell className="text-right">
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => openChangePathDialog(user)}
-                                                            className="cursor-pointer"
-                                                        >
-                                                            <Settings className="h-4 w-4 mr-1" />
-                                                            Parcours
-                                                        </Button>
-                                                    </TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
@@ -418,15 +307,6 @@ export default function AdminUsersPage() {
                                                     </p>
                                                 </div>
                                             )}
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => openChangePathDialog(user)}
-                                                className="w-full cursor-pointer"
-                                            >
-                                                <Settings className="h-4 w-4 mr-2" />
-                                                Modifier le parcours
-                                            </Button>
                                         </div>
                                     ))}
                                 </div>
@@ -463,133 +343,6 @@ export default function AdminUsersPage() {
                         </div>
                     </div>
                 )}
-
-                {/* Change Path Dialog */}
-                <Dialog open={changePathDialogOpen} onOpenChange={setChangePathDialogOpen}>
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                        <DialogHeader>
-                            <DialogTitle className="flex items-center gap-2">
-                                <GraduationCap className="h-5 w-5" />
-                                Modifier le parcours
-                            </DialogTitle>
-                            <DialogDescription>
-                                {selectedUser && (
-                                    <span>
-                                        Modifier le parcours de <strong>{selectedUser.firstName} {selectedUser.lastName}</strong>
-                                        {selectedUser.email && <span className="text-muted-foreground"> ({selectedUser.email})</span>}
-                                    </span>
-                                )}
-                            </DialogDescription>
-                        </DialogHeader>
-
-                        {selectedUser && selectedUser.cursus && (
-                            <div className="my-4 p-4 bg-muted/50 rounded-lg border">
-                                <p className="text-sm text-muted-foreground mb-2">Parcours actuel :</p>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <Badge variant="secondary">{selectedUser.cursus}</Badge>
-                                    <Badge variant="secondary">{selectedUser.filiere}</Badge>
-                                    <Badge variant="outline">{selectedUser.groupe}</Badge>
-                                    <span className="text-sm text-muted-foreground">({selectedUser.academicYear})</span>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="space-y-4 py-4">
-                            <p className="text-sm font-medium">Sélectionnez le nouveau parcours :</p>
-                            {loadingTemplates ? (
-                                <div className="text-center py-8">
-                                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-                                    <p className="text-muted-foreground">Chargement des parcours disponibles...</p>
-                                </div>
-                            ) : templateOptions.length === 0 ? (
-                                <div className="text-center py-8">
-                                    <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                                    <p className="text-muted-foreground">
-                                        Aucun parcours disponible. Créez d&apos;abord des modèles d&apos;année.
-                                    </p>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="space-y-3 max-h-[300px] overflow-y-auto">
-                                        {templateOptions.map((option, index) => (
-                                            <Card
-                                                key={index}
-                                                className={`cursor-pointer transition-all hover:shadow-md ${
-                                                    selectedTemplate === option
-                                                        ? "border-2 border-primary bg-primary/5"
-                                                        : "border-2 border-transparent"
-                                                }`}
-                                                onClick={() => setSelectedTemplate(option)}
-                                            >
-                                                <CardContent className="p-4">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-3">
-                                                            <div>
-                                                                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                                                    <Badge variant="secondary">{option.cursus}</Badge>
-                                                                    <Badge variant="secondary">{option.filiere}</Badge>
-                                                                    <Badge variant="outline">{option.groupe}</Badge>
-                                                                </div>
-                                                                <p className="text-sm text-muted-foreground">
-                                                                    Année : {option.academicYear}
-                                                                </p>
-                                                                <div className="flex gap-2 mt-2">
-                                                                    {option.hasS1 ? (
-                                                                        <Badge className="bg-green-500 text-xs">S1 ✓</Badge>
-                                                                    ) : (
-                                                                        <Badge variant="outline" className="text-xs text-muted-foreground">S1 ✕</Badge>
-                                                                    )}
-                                                                    {option.hasS2 ? (
-                                                                        <Badge className="bg-blue-500 text-xs">S2 ✓</Badge>
-                                                                    ) : (
-                                                                        <Badge variant="outline" className="text-xs text-muted-foreground">S2 ✕</Badge>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        {selectedTemplate === option && (
-                                                            <Badge className="ml-4">Sélectionné</Badge>
-                                                        )}
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        ))}
-                                    </div>
-                                    <div className="flex gap-3 pt-4 border-t">
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => {
-                                                setChangePathDialogOpen(false);
-                                                setSelectedUser(null);
-                                                setSelectedTemplate(null);
-                                            }}
-                                            className="flex-1 cursor-pointer"
-                                        >
-                                            Annuler
-                                        </Button>
-                                        <Button
-                                            onClick={handleChangePath}
-                                            disabled={!selectedTemplate || changingPath}
-                                            className="flex-1 cursor-pointer"
-                                        >
-                                            {changingPath ? (
-                                                <>
-                                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                                    Mise à jour...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <GraduationCap className="h-4 w-4 mr-2" />
-                                                    Appliquer le parcours
-                                                </>
-                                            )}
-                                        </Button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </DialogContent>
-                </Dialog>
             </div>
         </div>
     );
