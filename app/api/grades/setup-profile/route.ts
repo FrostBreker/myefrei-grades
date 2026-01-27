@@ -16,7 +16,7 @@ export async function POST(request: Request) {
             );
         }
 
-        const { cursus, filiere, groupe } = await request.json();
+        const { cursus, filiere, groupe, academicYear } = await request.json();
 
         // Validate inputs
         if (!cursus || !filiere || !groupe) {
@@ -60,7 +60,8 @@ export async function POST(request: Request) {
             session.user.email,
             cursus as Cursus,
             filiere as Filiere,
-            groupe as Groupe
+            groupe as Groupe,
+            academicYear as string | undefined
         );
 
         return NextResponse.json({

@@ -132,13 +132,14 @@ export async function createAcademicProfile(
     userEmail: string,
     cursus: Cursus,
     filiere: Filiere,
-    groupe: Groupe
+    groupe: Groupe,
+    academicYearParam?: string
 ): Promise<AcademicProfile> {
     const client = await clientPromise;
     const db = client.db();
 
     const currentYear = new Date().getFullYear();
-    const academicYear = getCurrentAcademicYear();
+    const academicYear = academicYearParam || getCurrentAcademicYear();
 
     // Create first academic path
     const firstPath: AcademicPath = {
