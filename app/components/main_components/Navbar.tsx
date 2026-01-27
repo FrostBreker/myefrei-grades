@@ -20,7 +20,7 @@ import {
     SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, Home, FileText, BarChart3, Menu, Shield } from "lucide-react";
+import {GraduationCap, Home, FileText, BarChart3, Menu, Shield, Users} from "lucide-react";
 import { useIsAdmin } from "@lib/hooks/useIsAdmin";
 
 interface UserProfile {
@@ -169,13 +169,24 @@ function Navbar() {
                                         <div className="flex flex-col gap-2">
                                             {isAdmin && (
                                                 <>
+                                                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2">
+                                                        Administration
+                                                    </p>
+                                                    <Link
+                                                        href="/admin/users"
+                                                        onClick={() => setIsOpen(false)}
+                                                        className="flex items-center gap-3 text-base font-medium transition-colors text-primary hover:text-primary/80 p-2 rounded-md hover:bg-accent"
+                                                    >
+                                                        <Users className="h-5 w-5" />
+                                                        Utilisateurs
+                                                    </Link>
                                                     <Link
                                                         href="/admin/year-templates"
                                                         onClick={() => setIsOpen(false)}
                                                         className="flex items-center gap-3 text-base font-medium transition-colors text-primary hover:text-primary/80 p-2 rounded-md hover:bg-accent"
                                                     >
                                                         <Shield className="h-5 w-5" />
-                                                        Administration
+                                                        Templates d&apos;année
                                                     </Link>
                                                     <div className="h-px bg-border my-2" />
                                                 </>
@@ -255,20 +266,29 @@ function Navbar() {
                                 <DropdownMenuSeparator />
                                 {isAdmin && (
                                     <>
+                                        <DropdownMenuLabel className="text-xs text-muted-foreground">
+                                            Administration
+                                        </DropdownMenuLabel>
+                                        <DropdownMenuItem asChild className="cursor-pointer">
+                                            <Link href="/admin/users" className="flex items-center gap-2">
+                                                <Users className="h-4 w-4" />
+                                                Utilisateurs
+                                            </Link>
+                                        </DropdownMenuItem>
                                         <DropdownMenuItem asChild className="cursor-pointer">
                                             <Link href="/admin/year-templates" className="flex items-center gap-2">
                                                 <Shield className="h-4 w-4" />
-                                                Administration
+                                                Templates d&apos;année
                                             </Link>
                                         </DropdownMenuItem>
                                         <DropdownMenuSeparator />
                                     </>
                                 )}
-                                <DropdownMenuItem className={"cursor-pointer"}>
-                                    Profil
+                                <DropdownMenuItem asChild className="cursor-pointer">
+                                    <Link href="/profile">Profil</Link>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className={"cursor-pointer"}>
-                                    Paramètres
+                                <DropdownMenuItem asChild className="cursor-pointer">
+                                    <Link href="/settings">Paramètres</Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem className="text-red-600 p-0">
