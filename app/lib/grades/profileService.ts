@@ -132,14 +132,13 @@ export async function createAcademicProfile(
     userEmail: string,
     cursus: Cursus,
     filiere: Filiere,
-    groupe: Groupe,
-    academicYearParam?: string
+    groupe: Groupe
 ): Promise<AcademicProfile> {
     const client = await clientPromise;
     const db = client.db();
 
     const currentYear = new Date().getFullYear();
-    const academicYear = academicYearParam || getCurrentAcademicYear();
+    const academicYear = getCurrentAcademicYear();
 
     // Create first academic path
     const firstPath: AcademicPath = {
@@ -201,26 +200,16 @@ export async function addAcademicPath(
         createdAt: new Date()
     };
 
-    // If setting as active, first get the profile and update all paths
+    // If setting as active, first deactivate all other paths
     if (setAsActive) {
-        const profile = await db.collection<AcademicProfileDB>(PROFILE_COLLECTION)
-            .findOne({ userId: new ObjectId(userId) });
+        // Step 1: Deactivate all existing paths
+        await db.collection<AcademicProfileDB>(PROFILE_COLLECTION)
+            .updateOne(
+                { userId: new ObjectId(userId) },
+                { $set: { "paths.$[].isActive": false } }
+            );
 
-        if (profile && profile.paths.length > 0) {
-            // Deactivate all existing paths
-            const updatedPaths = profile.paths.map(p => ({
-                ...p,
-                isActive: false
-            }));
-
-            await db.collection<AcademicProfileDB>(PROFILE_COLLECTION)
-                .updateOne(
-                    { userId: new ObjectId(userId) },
-                    { $set: { paths: updatedPaths } }
-                );
-        }
-
-        // Set new path as active
+        // Step 2: Add the new path with isActive = true
         newPath.isActive = true;
     }
 

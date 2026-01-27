@@ -218,7 +218,7 @@ function StatsCard({ stats, userAverage, level }: { stats: GroupStats; userAvera
             </Card>
 
             {/* UE details */}
-            {stats.averages.byUE.length > 0 && (
+            {stats.averages.byUE.length > 0 && level !== "cursus" && (
                 <Accordion type="multiple" className="space-y-2">
                     {stats.averages.byUE.map((ue) => (
                         <AccordionItem key={ue.ueId} value={ue.ueId} className="border rounded-lg">
@@ -231,6 +231,9 @@ function StatsCard({ stats, userAverage, level }: { stats: GroupStats; userAvera
                                     <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm self-end sm:self-auto">
                                         <span className="text-muted-foreground">
                                             Moy: {ue.stats.average?.toFixed(2) ?? "-"}
+                                        </span>
+                                        <span className="text-muted-foreground">
+                                            Max: {ue.stats.max?.toFixed(2) ?? "-"}
                                         </span>
                                         <RankDisplay rank={ue.stats.rank} total={ue.stats.totalWithGrades} />
                                     </div>

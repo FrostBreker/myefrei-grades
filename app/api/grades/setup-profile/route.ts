@@ -61,7 +61,6 @@ export async function POST(request: Request) {
             cursus as Cursus,
             filiere as Filiere,
             groupe as Groupe,
-            academicYear as string | undefined
         );
 
         return NextResponse.json({

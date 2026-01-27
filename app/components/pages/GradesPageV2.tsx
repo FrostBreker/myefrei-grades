@@ -280,14 +280,14 @@ export default function GradesPageV2({ initialProfile, initialSemesters, userEma
                             <GraduationCap className="h-6 w-6 md:h-8 md:w-8 text-primary" />
                             <div>
                                 <h1 className="text-2xl md:text-4xl font-bold">Mes Notes</h1>
-                                <p className="text-sm md:text-base text-muted-foreground truncate max-w-50 sm:max-w-none">
+                                <p className="text-sm md:text-base text-muted-foreground truncate max-w-[200px] sm:max-w-none">
                                     {userEmail}
                                 </p>
                             </div>
                         </div>
                         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                             <DialogTrigger asChild>
-                                <Button size="default" className="w-full sm:w-auto cursor-pointer" disabled>
+                                <Button size="default" className="w-full sm:w-auto cursor-pointer">
                                     <Plus className="h-4 w-4 md:h-5 md:w-5 mr-2" />
                                     Ajouter un parcours
                                 </Button>
