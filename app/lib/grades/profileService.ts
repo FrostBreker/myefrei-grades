@@ -200,42 +200,42 @@ export async function addAcademicPath(
         createdAt: new Date()
     };
 
-    // If setting as active, deactivate all other paths
-    const updateQuery = setAsActive
-        ? {
-            $push: { paths: newPath },
-            $set: {
-                "paths.$[].isActive": false,
-                updatedAt: new Date()
-            }
-        }
-        : {
-            $push: { paths: newPath },
-            $set: { updatedAt: new Date() }
-        };
+    // If setting as active, first get the profile and update all paths
+    if (setAsActive) {
+        const profile = await db.collection<AcademicProfileDB>(PROFILE_COLLECTION)
+            .findOne({ userId: new ObjectId(userId) });
 
+        if (profile && profile.paths.length > 0) {
+            // Deactivate all existing paths
+            const updatedPaths = profile.paths.map(p => ({
+                ...p,
+                isActive: false
+            }));
+
+            await db.collection<AcademicProfileDB>(PROFILE_COLLECTION)
+                .updateOne(
+                    { userId: new ObjectId(userId) },
+                    { $set: { paths: updatedPaths } }
+                );
+        }
+
+        // Set new path as active
+        newPath.isActive = true;
+    }
+
+    // Add the new path
     const result = await db.collection<AcademicProfileDB>(PROFILE_COLLECTION)
         .findOneAndUpdate(
             { userId: new ObjectId(userId) },
-            updateQuery,
+            {
+                $push: { paths: newPath },
+                $set: { updatedAt: new Date() }
+            },
             { returnDocument: 'after' }
         );
 
     if (!result.value) return null;
 
-    // If setAsActive, ensure the new path is active
-    if (setAsActive) {
-        const profile = result.value;
-        profile.paths = profile.paths.map(p =>
-            p.id === newPath.id ? { ...p, isActive: true } : { ...p, isActive: false }
-        );
-
-        await db.collection<AcademicProfileDB>(PROFILE_COLLECTION)
-            .updateOne(
-                { userId: new ObjectId(userId) },
-                { $set: { paths: profile.paths } }
-            );
-    }
 
     // Create user semesters from matching year template
     const email = userEmail || result.value.userEmail;

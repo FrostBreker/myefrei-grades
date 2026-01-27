@@ -41,11 +41,18 @@ export async function POST(request: Request) {
         // Check if profile already exists
         const existingProfile = await getAcademicProfile(user._id.toString());
         if (existingProfile) {
+            console.log("Profile already exists for user:", user.email, "Profile ID:", existingProfile._id);
             return NextResponse.json(
-                { error: "Profil académique déjà existant" },
+                {
+                    error: "Profil académique déjà existant",
+                    exists: true,
+                    profileId: existingProfile._id
+                },
                 { status: 409 }
             );
         }
+
+        console.log("Creating new academic profile for user:", user.email);
 
         // Create new academic profile with first path
         const profile = await createAcademicProfile(
@@ -94,6 +101,8 @@ export async function GET() {
 
         // Get academic profile using new service
         const profile = await getAcademicProfile(user._id.toString());
+
+        console.log("GET setup-profile - User:", user.email, "Has profile:", !!profile);
 
         if (!profile) {
             return NextResponse.json(

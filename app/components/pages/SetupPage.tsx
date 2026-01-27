@@ -27,6 +27,7 @@ export default function SetupPage() {
     const router = useRouter();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [checkingProfile, setCheckingProfile] = useState(true);
     const cursusLoadedRef = useRef(false);
     const profileLoadedRef = useRef(false);
 
@@ -42,6 +43,37 @@ export default function SetupPage() {
     const [cursus, setCursus] = useState<Cursus | null>(null);
     const [filiere, setFiliere] = useState<Filiere | null>(null);
     const [groupe, setGroupe] = useState<Groupe | null>(null);
+
+    // Check if user already has an academic profile - redirect to grades if so
+    useEffect(() => {
+        const checkExistingProfile = async () => {
+            try {
+                const response = await fetch("/api/grades/setup-profile");
+
+                if (!response.ok) {
+                    console.error("Error checking profile, status:", response.status);
+                    setCheckingProfile(false);
+                    return;
+                }
+
+                const data = await response.json();
+                console.log("Profile check result:", data);
+
+                if (data.exists === true) {
+                    // User already has a profile, redirect to grades
+                    console.log("Profile exists, redirecting to grades");
+                    router.push("/grades");
+                    return;
+                }
+            } catch (error) {
+                console.error("Error checking profile:", error);
+            } finally {
+                setCheckingProfile(false);
+            }
+        };
+
+        checkExistingProfile();
+    }, [router]);
 
     // Load user name for display
     useEffect(() => {
@@ -161,10 +193,17 @@ export default function SetupPage() {
                 body: JSON.stringify({cursus, filiere, groupe})
             });
 
+            const data = await response.json();
+
             if (response.ok) {
                 router.push("/grades");
+            } else if (response.status === 409) {
+                // Profile already exists, redirect to grades
+                console.log("Profile already exists, redirecting to grades");
+                router.push("/grades");
             } else {
-                throw new Error("Failed to setup profile");
+                console.error("Setup profile error:", data);
+                alert(`Erreur: ${data.error || "Erreur inconnue"}`);
             }
         } catch (error) {
             console.error("Error setting up profile:", error);
@@ -174,6 +213,17 @@ export default function SetupPage() {
         }
     };
 
+    // Show loading screen while checking for existing profile
+    if (checkingProfile) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-linear-to-b from-background to-muted">
+                <div className="text-center space-y-4">
+                    <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
+                    <p className="text-muted-foreground">Vérification de votre profil...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-linear-to-b from-background to-muted py-12">
