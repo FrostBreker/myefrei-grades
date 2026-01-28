@@ -1,7 +1,7 @@
 "use client";
-import {User} from "@lib/user/getUserBySession";
-import {useSession, signIn} from "next-auth/react";
-import {useEffect, useState} from "react";
+import React from 'react';
+import {User} from "@lib/user/types";
+import {signIn} from "next-auth/react";
 import Link from "next/link";
 import {Button} from "@/components/ui/button";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
@@ -18,36 +18,13 @@ import {
     ArrowRight
 } from "lucide-react";
 
-interface UserProfile {
-    firstName?: string;
-    lastName?: string;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function HomePage({initialUserData}: { initialUserData: User | null }) {
-    const {data: session, status} = useSession();
-    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-
-    // Fetch user profile to get firstName and lastName
-    useEffect(() => {
-        if (session?.user?.email) {
-            fetch("/api/user/profile")
-                .then(res => res.json())
-                .then(data => {
-                    if (data.firstName && data.lastName) {
-                        setUserProfile({ firstName: data.firstName, lastName: data.lastName });
-                    }
-                })
-                .catch(err => console.error("Error fetching profile:", err));
-        }
-    }, [session?.user?.email]);
-
+function HomePage({initialUserData}: {initialUserData: User | null}) {
     // Get display name: firstName if available, otherwise email prefix
     const getDisplayName = () => {
-        if (userProfile?.firstName) {
-            return userProfile.firstName;
+        if (initialUserData?.firstName) {
+            return initialUserData.firstName;
         }
-        return session?.user?.email?.split("@")[0] || "";
+        return initialUserData?.email?.split("@")[0] || "";
     };
 
     const features = [
@@ -101,7 +78,7 @@ function HomePage({initialUserData}: { initialUserData: User | null }) {
             <section className="px-4 py-20 md:py-32">
                 <div className="flex flex-col items-center text-center space-y-8">
                     <Badge variant="secondary" className="px-4 py-2 text-sm">
-                        <GraduationCap className="h-4 w-4 mr-2 inline" />
+                        <GraduationCap className="h-4 w-4 mr-2 inline"/>
                         Fait par un étudiant, pour les étudiants
                     </Badge>
 
@@ -117,11 +94,7 @@ function HomePage({initialUserData}: { initialUserData: User | null }) {
                     </p>
 
                     <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                        {status === "loading" ? (
-                            <Button size="lg" disabled className="text-lg px-8 py-6">
-                                Chargement...
-                            </Button>
-                        ) : session ? (
+                        {initialUserData ? (
                             <Button size="lg" asChild className="text-lg px-8 py-6">
                                 <Link href="/grades">
                                     C&apos;est parti ! 🚀
@@ -139,7 +112,7 @@ function HomePage({initialUserData}: { initialUserData: User | null }) {
                             </Button>
                         )}
                         <Button size="lg" variant="outline" asChild className="text-lg px-8 py-6">
-                            <Link href="#features">
+                            <Link href="/#features">
                                 Comment ça marche ?
                             </Link>
                         </Button>
@@ -234,7 +207,7 @@ function HomePage({initialUserData}: { initialUserData: User | null }) {
             </section>
 
             {/* CTA Section */}
-            {!session && status !== "loading" && (
+            {!initialUserData && (
                 <section className="px-4 py-20">
                     <Card className="max-w-4xl mx-auto bg-primary text-primary-foreground border-0">
                         <CardContent className="p-8 md:p-12 text-center space-y-6">
@@ -260,7 +233,7 @@ function HomePage({initialUserData}: { initialUserData: User | null }) {
             )}
 
             {/* Welcome back section for authenticated users */}
-            {session && (
+            {initialUserData && (
                 <section className="px-4 py-20">
                     <Card className="max-w-4xl mx-auto border-2 border-primary/20">
                         <CardContent className="p-8 md:p-12 text-center space-y-6">

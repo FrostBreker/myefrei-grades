@@ -49,10 +49,12 @@ function Navbar() {
         }
     }, [user?.email]);
 
-    // Get display name: firstName + lastName if available, otherwise email prefix
+    // Get display name: firstName + lastName if available, if not --> google name otherwise email prefix
     const getDisplayName = () => {
         if (userProfile?.firstName && userProfile?.lastName) {
             return `${userProfile.firstName} ${userProfile.lastName}`;
+        } else if (user?.name) {
+            return user.name;
         }
         return user?.email?.split("@")[0] || "";
     };
@@ -61,6 +63,13 @@ function Navbar() {
     const getUserInitials = (email?: string | null) => {
         if (userProfile?.firstName && userProfile?.lastName) {
             return `${userProfile.firstName.charAt(0)}${userProfile.lastName.charAt(0)}`.toUpperCase();
+        } else if (user?.name) {
+            const names = user.name.split(" ");
+            if (names.length >= 2) {
+                return (names[0].charAt(0) + names[1].charAt(0)).toUpperCase();
+            } else if (names.length === 1) {
+                return names[0].charAt(0).toUpperCase();
+            }
         }
         if (!email) return "U";
         return email.charAt(0).toUpperCase();
@@ -168,7 +177,7 @@ function Navbar() {
                                     <Fragment>
                                         <div className="flex flex-col gap-2">
                                             {isAdmin && (
-                                                <>
+                                                <Fragment>
                                                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-2">
                                                         Administration
                                                     </p>
@@ -189,7 +198,7 @@ function Navbar() {
                                                         Templates d&apos;année
                                                     </Link>
                                                     <div className="h-px bg-border my-2" />
-                                                </>
+                                                </Fragment>
                                             )}
                                             <Link
                                                 href="/profile"

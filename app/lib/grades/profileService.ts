@@ -281,20 +281,6 @@ export async function setActivePath(
 }
 
 /**
- * Get active path
- */
-export function getActivePath(profile: AcademicProfile): AcademicPath | null {
-    return profile.paths.find(p => p.isActive) || null;
-}
-
-/**
- * Get all paths for a user
- */
-export function getAllPaths(profile: AcademicProfile): AcademicPath[] {
-    return profile.paths;
-}
-
-/**
  * Remove an academic path
  */
 export async function removeAcademicPath(
