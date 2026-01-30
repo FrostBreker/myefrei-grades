@@ -1,11 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@api/auth/[...nextauth]/route";
-import { isAdmin } from "@lib/user/checkAdmin";
+import {NextRequest, NextResponse} from "next/server";
 import clientPromise from "@lib/mongodb";
-import { Db, ObjectId } from "mongodb";
+import {Db, ObjectId} from "mongodb";
 import {AcademicPath, Cursus, Filiere, Groupe, AcademicYearTemplateDB, UserSemesterDB, UE, Module, GradeEntry} from "@lib/grades/types";
-import { getCurrentAcademicYear } from "@lib/grades/utils";
+import {getCurrentAcademicYear} from "@lib/grades/utils";
+import {requestAdminCheck} from "@lib/api/request_check";
 
 const PROFILE_COLLECTION = "academicProfiles";
 const YEAR_TEMPLATE_COLLECTION = "academicYearTemplates";
@@ -14,29 +12,18 @@ const SEMESTER_COLLECTION = "userSemesters";
 /**
  * PUT - Admin: Change user's active academic path
  */
-export async function PUT(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, {params}: { params: Promise<{ id: string }> }) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
-            return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-        }
+        const isAuthorized = await requestAdminCheck();
+        if (!isAuthorized) return;
 
-        // Verify admin access
-        const userIsAdmin = await isAdmin();
-        if (!userIsAdmin) {
-            return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-        }
-
-        const { id: userId } = await params;
-        const { cursus, filiere, groupe, academicYear } = await request.json();
+        const {id: userId} = await params;
+        const {cursus, filiere, groupe, academicYear} = await request.json();
 
         if (!cursus || !filiere || !groupe) {
             return NextResponse.json(
-                { error: "Cursus, filière et groupe requis" },
-                { status: 400 }
+                {error: "Cursus, filière et groupe requis"},
+                {status: 400}
             );
         }
 
@@ -44,9 +31,9 @@ export async function PUT(
         const db = client.db();
 
         // Check if user exists
-        const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+        const user = await db.collection('users').findOne({_id: new ObjectId(userId)});
         if (!user) {
-            return NextResponse.json({ error: "Utilisateur non trouvé" }, { status: 404 });
+            return NextResponse.json({error: "Utilisateur non trouvé"}, {status: 404});
         }
 
         const pathAcademicYear = academicYear || getCurrentAcademicYear();
@@ -75,7 +62,7 @@ export async function PUT(
             updatedPaths.push(newPath);
 
             await db.collection(PROFILE_COLLECTION).updateOne(
-                { userId: new ObjectId(userId) },
+                {userId: new ObjectId(userId)},
                 {
                     $set: {
                         paths: updatedPaths,
@@ -112,30 +99,19 @@ export async function PUT(
         });
     } catch (error) {
         console.error("Error updating user path:", error);
-        return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+        return NextResponse.json({error: "Erreur serveur"}, {status: 500});
     }
 }
 
 /**
  * GET - Admin: Get user's academic profile
  */
-export async function GET(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, {params}: { params: Promise<{ id: string }> }) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
-            return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-        }
+        const isAuthorized = await requestAdminCheck();
+        if (!isAuthorized) return;
 
-        // Verify admin access
-        const userIsAdmin = await isAdmin();
-        if (!userIsAdmin) {
-            return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-        }
-
-        const { id: userId } = await params;
+        const {id: userId} = await params;
 
         const client = await clientPromise;
         const db = client.db();
@@ -161,7 +137,7 @@ export async function GET(
         });
     } catch (error) {
         console.error("Error getting user profile:", error);
-        return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+        return NextResponse.json({error: "Erreur serveur"}, {status: 500});
     }
 }
 

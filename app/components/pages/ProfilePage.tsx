@@ -235,8 +235,7 @@ export default function ProfilePage({ initialProfile, initialAcademicProfile }: 
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                     <Button
                         variant="outline"
-                        disabled
-                        onClick={() => router.push('/onboarding')}
+                        onClick={() => router.push('/settings')}
                         className="gap-2 cursor-pointer"
                     >
                         <Settings className="h-4 w-4" />

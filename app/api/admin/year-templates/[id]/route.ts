@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@api/auth/[...nextauth]/route";
 import { getYearTemplateById } from "@lib/grades/yearTemplateService";
+import {requestAuthCheck} from "@lib/api/request_check";
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -12,13 +11,8 @@ interface RouteParams {
  */
 export async function GET(request: Request, { params }: RouteParams) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
-            return NextResponse.json(
-                { error: "Non autorisé" },
-                { status: 401 }
-            );
-        }
+        const isAuthorized = await requestAuthCheck();
+        if (!isAuthorized) return;
 
         const { id } = await params;
 

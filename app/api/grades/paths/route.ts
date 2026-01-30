@@ -1,6 +1,4 @@
 import {NextResponse} from "next/server";
-import {getServerSession} from "next-auth";
-import {authOptions} from "@api/auth/[...nextauth]/route";
 import clientPromise from "@lib/mongodb";
 import {
     getAcademicProfile,
@@ -9,19 +7,15 @@ import {
     removeAcademicPath
 } from "@lib/grades/profileService";
 import {AcademicPath, Cursus, Filiere, Groupe} from "@lib/grades/types";
+import {requestAuthCheck} from "@lib/api/request_check";
 
 /**
  * GET - Get user's academic profile with all paths
  */
 export async function GET() {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
-            return NextResponse.json(
-                {error: "Non autorisé"},
-                {status: 401}
-            );
-        }
+        const session = await requestAuthCheck();
+        if (!session || !session?.user) return;
 
         const client = await clientPromise;
         const db = client.db();
@@ -61,13 +55,8 @@ export async function GET() {
  */
 export async function POST(request: Request) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
-            return NextResponse.json(
-                {error: "Non autorisé"},
-                {status: 401}
-            );
-        }
+        const session = await requestAuthCheck();
+        if (!session || !session?.user) return;
 
         const {cursus, filiere, groupe, academicYear, setAsActive} = await request.json();
 
@@ -83,6 +72,13 @@ export async function POST(request: Request) {
         const user = await db.collection('users').findOne({email: session.user.email});
 
         if (!user) {
+            return NextResponse.json(
+                {error: "Utilisateur non trouvé"},
+                {status: 404}
+            );
+        }
+
+        if (!session.user.email) {
             return NextResponse.json(
                 {error: "Utilisateur non trouvé"},
                 {status: 404}
@@ -117,13 +113,8 @@ export async function POST(request: Request) {
  */
 export async function PUT(request: Request) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
-            return NextResponse.json(
-                {error: "Non autorisé"},
-                {status: 401}
-            );
-        }
+        const session = await requestAuthCheck();
+        if (!session || !session?.user) return;
 
         const {pathId} = await request.json();
 
@@ -165,13 +156,8 @@ export async function PUT(request: Request) {
  */
 export async function DELETE(request: Request) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
-            return NextResponse.json(
-                {error: "Non autorisé"},
-                {status: 401}
-            );
-        }
+        const session = await requestAuthCheck();
+        if (!session || !session?.user) return;
 
         const {searchParams} = new URL(request.url);
         const pathId = searchParams.get('pathId');

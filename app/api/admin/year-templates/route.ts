@@ -1,7 +1,4 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@api/auth/[...nextauth]/route";
-import { isAdmin } from "@lib/user/checkAdmin";
 import {
     getAllYearTemplates,
     createYearTemplate,
@@ -9,19 +6,15 @@ import {
     deleteYearTemplate
 } from "@lib/grades/yearTemplateService";
 import { Cursus, Filiere, Groupe, SemesterData } from "@lib/grades/types";
+import {requestAdminCheck, requestAuthCheck} from "@lib/api/request_check";
 
 /**
  * GET - Get all year templates
  */
 export async function GET() {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
-            return NextResponse.json(
-                { error: "Non autorisé" },
-                { status: 401 }
-            );
-        }
+        const isAuthorized = await requestAuthCheck();
+        if (!isAuthorized) return;
 
         const templates = await getAllYearTemplates();
 
@@ -43,22 +36,8 @@ export async function GET() {
  */
 export async function POST(request: Request) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
-            return NextResponse.json(
-                { error: "Non autorisé" },
-                { status: 401 }
-            );
-        }
-
-        // Check admin
-        const userIsAdmin = await isAdmin();
-        if (!userIsAdmin) {
-            return NextResponse.json(
-                { error: "Accès réservé aux administrateurs" },
-                { status: 403 }
-            );
-        }
+        const isAuthorized = await requestAuthCheck();
+        if (!isAuthorized) return;
 
         const { cursus, filiere, groupe, academicYear, semesters } = await request.json();
 
@@ -115,22 +94,8 @@ export async function POST(request: Request) {
  */
 export async function PUT(request: Request) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
-            return NextResponse.json(
-                { error: "Non autorisé" },
-                { status: 401 }
-            );
-        }
-
-        // Check admin
-        const userIsAdmin = await isAdmin();
-        if (!userIsAdmin) {
-            return NextResponse.json(
-                { error: "Accès réservé aux administrateurs" },
-                { status: 403 }
-            );
-        }
+        const isAuthorized = await requestAdminCheck();
+        if (!isAuthorized) return;
 
         const { templateId, semesters } = await request.json();
 
@@ -168,22 +133,8 @@ export async function PUT(request: Request) {
  */
 export async function DELETE(request: Request) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
-            return NextResponse.json(
-                { error: "Non autorisé" },
-                { status: 401 }
-            );
-        }
-
-        // Check admin
-        const userIsAdmin = await isAdmin();
-        if (!userIsAdmin) {
-            return NextResponse.json(
-                { error: "Accès réservé aux administrateurs" },
-                { status: 403 }
-            );
-        }
+        const isAuthorized = await requestAdminCheck();
+        if (!isAuthorized) return;
 
         const { searchParams } = new URL(request.url);
         const templateId = searchParams.get('templateId');

@@ -1,20 +1,14 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@api/auth/[...nextauth]/route";
 import { getUserSemesters, getSemesterById, updateSemesterGrades } from "@lib/grades/semesterService";
 import clientPromise from "@lib/mongodb";
 import { UE } from "@lib/grades/types";
+import {requestAuthCheck} from "@lib/api/request_check";
 
 export async function GET(request: Request) {
     try {
         // Check authentication
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
-            return NextResponse.json(
-                { error: "Non autorisé" },
-                { status: 401 }
-            );
-        }
+        const session = await requestAuthCheck();
+        if (!session || !session?.user) return;
 
         // Check if requesting a specific semester
         const { searchParams } = new URL(request.url);
@@ -78,13 +72,8 @@ export async function GET(request: Request) {
  */
 export async function PUT(request: Request) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
-            return NextResponse.json(
-                { error: "Non autorisé" },
-                { status: 401 }
-            );
-        }
+        const session = await requestAuthCheck();
+        if (!session || !session?.user) return;
 
         const { semesterId, ues } = await request.json();
 

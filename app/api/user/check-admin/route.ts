@@ -1,18 +1,12 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@api/auth/[...nextauth]/route";
-import { isAdmin } from "@lib/user/checkAdmin";
+import {requestAdminCheck} from "@lib/api/request_check";
 
 export async function GET() {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
-            return NextResponse.json({ isAdmin: false });
-        }
+        const isAuthorized = await requestAdminCheck();
+        if (!isAuthorized) return;
 
-        const userIsAdmin = await isAdmin();
-
-        return NextResponse.json({ isAdmin: userIsAdmin });
+        return NextResponse.json({ isAdmin: isAuthorized });
     } catch (error) {
         console.error("Error checking admin:", error);
         return NextResponse.json({ isAdmin: false });
