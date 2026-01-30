@@ -1,22 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@api/auth/[...nextauth]/route";
-import { isAdmin } from "@lib/user/checkAdmin";
 import clientPromise from "@lib/mongodb";
 import { ObjectId } from "mongodb";
+import {requestAdminCheck} from "@lib/api/request_check";
 
 export async function GET(request: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
-            return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-        }
-
-        // Vérifier que l'utilisateur est admin
-        const userIsAdmin = await isAdmin();
-        if (!userIsAdmin) {
-            return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-        }
+        const isAuthorized = await requestAdminCheck();
+        if (!isAuthorized) return;
 
         const { searchParams } = new URL(request.url);
         const search = searchParams.get("search") || "";

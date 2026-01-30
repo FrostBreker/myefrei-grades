@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
-import GradesPageV2 from "@/app/components/pages/GradesPageV2";
+import GradesPage from "@components/pages/GradesPage";
 import { getAcademicProfile } from "@lib/grades/profileService";
 import { getUserSemesters } from "@lib/grades/semesterService";
 import clientPromise from "@lib/mongodb";
@@ -44,7 +44,7 @@ export default async function Grades() {
     const semesters = await getUserSemesters(user._id.toString());
 
     return (
-        <GradesPageV2
+        <GradesPage
             initialProfile={profile}
             initialSemesters={semesters}
             userEmail={session.user.email}

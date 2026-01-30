@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@api/auth/[...nextauth]/route";
 import clientPromise from "@lib/mongodb";
 import { ObjectId } from "mongodb";
 import { UserSemesterDB } from "@lib/grades/types";
+import {requestAuthCheck} from "@lib/api/request_check";
 
 interface StatsResult {
     groupe: GroupStats;
@@ -146,19 +145,14 @@ function normalizeUECode(code: string): string {
 }
 
 // Check if a module code matches a normalized code
-function moduleCodesMatch(code1: string, code2: string): boolean {
-    return normalizeModuleCode(code1) === normalizeModuleCode(code2);
-}
+// function moduleCodesMatch(code1: string, code2: string): boolean {
+//     return normalizeModuleCode(code1) === normalizeModuleCode(code2);
+// }
 
 export async function GET(request: Request) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
-            return NextResponse.json(
-                { error: "Non autorisé" },
-                { status: 401 }
-            );
-        }
+        const session = await requestAuthCheck();
+        if (!session || !session?.user) return;
 
         const { searchParams } = new URL(request.url);
         const semesterId = searchParams.get('semesterId');
@@ -242,9 +236,9 @@ export async function GET(request: Request) {
         }));
 
         // Get user's module IDs for filtering
-        const userModuleIds = new Set(
-            userSemester.ues.flatMap(ue => ue.modules.map(m => m.id))
-        );
+        // const userModuleIds = new Set(
+        //     userSemester.ues.flatMap(ue => ue.modules.map(m => m.id))
+        // );
 
         // Helper function to calculate stats for a group of semesters
         const calculateGroupStats = (

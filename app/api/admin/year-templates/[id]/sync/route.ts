@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@api/auth/[...nextauth]/route";
-import { isAdmin } from "@lib/user/checkAdmin";
 import { getYearTemplateById } from "@lib/grades/yearTemplateService";
 import { syncUserSemestersWithYearTemplate } from "@lib/grades/semesterService";
+import {requestAdminCheck} from "@lib/api/request_check";
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -14,22 +12,8 @@ interface RouteParams {
  */
 export async function POST(request: Request, { params }: RouteParams) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
-            return NextResponse.json(
-                { error: "Non autorisé" },
-                { status: 401 }
-            );
-        }
-
-        // Check admin
-        const userIsAdmin = await isAdmin();
-        if (!userIsAdmin) {
-            return NextResponse.json(
-                { error: "Accès réservé aux administrateurs" },
-                { status: 403 }
-            );
-        }
+        const isAuthorized = await requestAdminCheck();
+        if (!isAuthorized) return;
 
         const { id } = await params;
 

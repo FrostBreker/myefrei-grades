@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {GraduationCap, Github, Mail, Heart, Coffee, Linkedin} from "lucide-react";
-import LinkedIn from "next-auth/providers/linkedin";
 
 export default function Footer() {
     const currentYear = new Date().getFullYear();

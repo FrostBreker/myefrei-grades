@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@api/auth/[...nextauth]/route";
 import clientPromise from "@lib/mongodb";
+import {requestAuthCheck} from "@lib/api/request_check";
 
 // Regex pour les noms (lettres, accents, tirets, apostrophes, espaces)
 const nameRegex = /^[a-zA-ZÀ-ÿ\s'-]+$/;
@@ -73,10 +72,8 @@ function validateStudentNumber(studentNumber: string): { valid: boolean; error?:
 // GET - Récupérer le profil de l'utilisateur
 export async function GET() {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
-            return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-        }
+        const session = await requestAuthCheck();
+        if (!session || !session?.user) return;
 
         const client = await clientPromise;
         const db = client.db();
@@ -100,10 +97,8 @@ export async function GET() {
 // PUT - Mettre à jour le profil de l'utilisateur
 export async function PUT(request: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
-            return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-        }
+        const session = await requestAuthCheck();
+        if (!session || !session?.user) return;
 
         const body = await request.json();
         const { firstName, lastName, studentNumber } = body;

@@ -1,22 +1,23 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@api/auth/[...nextauth]/route";
 import { createAcademicProfile, getAcademicProfile } from "@lib/grades/profileService";
 import { Cursus, Filiere, Groupe } from "@lib/grades/types";
 import clientPromise from "@lib/mongodb";
+import {requestAuthCheck} from "@lib/api/request_check";
 
 export async function POST(request: Request) {
     try {
         // Check authentication
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
+        const session = await requestAuthCheck();
+        if (!session || !session?.user) return;
+
+        if (!session.user.email) {
             return NextResponse.json(
-                { error: "Non autorisé" },
-                { status: 401 }
+                { error: "Email utilisateur manquant" },
+                { status: 400 }
             );
         }
 
-        const { cursus, filiere, groupe, academicYear } = await request.json();
+        const { cursus, filiere, groupe } = await request.json();
 
         // Validate inputs
         if (!cursus || !filiere || !groupe) {
@@ -79,13 +80,8 @@ export async function POST(request: Request) {
 export async function GET() {
     try {
         // Check authentication
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
-            return NextResponse.json(
-                { error: "Non autorisé" },
-                { status: 401 }
-            );
-        }
+        const session = await requestAuthCheck();
+        if (!session || !session?.user) return;
 
         // Get user ID
         const client = await clientPromise;

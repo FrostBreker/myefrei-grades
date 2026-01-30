@@ -11,5 +11,6 @@ export default async function Home(request: NextRequest) {
     if (session) {
         initialUserData = await getUserBySession(session, request);
     }
+
     return <HomePage initialUserData={initialUserData} />;
 }
