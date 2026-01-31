@@ -53,7 +53,7 @@ export default function YearTemplatesListPage() {
 
             if (data.success) {
                 alert("✅ Template supprimé avec succès");
-                loadTemplates();
+                await loadTemplates();
             } else {
                 alert(`❌ Erreur : ${data.error}`);
             }

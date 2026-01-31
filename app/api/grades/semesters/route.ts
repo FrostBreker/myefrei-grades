@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getUserSemesters, getSemesterById, updateSemesterGrades } from "@lib/grades/semesterService";
+import {getUserSemesters, getSemesterById, updateSemesterGrades, updateSemesterBranch} from "@lib/grades/semesterService";
 import clientPromise from "@lib/mongodb";
 import { UE } from "@lib/grades/types";
 import {requestAuthCheck} from "@lib/api/request_check";
@@ -75,9 +75,9 @@ export async function PUT(request: Request) {
         const session = await requestAuthCheck();
         if (!session || !session?.user) return;
 
-        const { semesterId, ues } = await request.json();
+        const { semesterId, ues, branch } = await request.json();
 
-        if (!semesterId || !ues) {
+        if (!semesterId || (!ues && !branch)) {
             return NextResponse.json(
                 { error: "Paramètres manquants" },
                 { status: 400 }
@@ -120,13 +120,25 @@ export async function PUT(request: Request) {
             );
         }
 
-        // Update grades
-        const updatedSemester = await updateSemesterGrades(semesterId, ues as UE[]);
+        if (ues) {
+            // Update grades
+            const updatedSemester = await updateSemesterGrades(semesterId, ues as UE[]);
 
-        return NextResponse.json({
-            success: true,
-            semester: updatedSemester
-        });
+            return NextResponse.json({
+                success: true,
+                semester: updatedSemester
+            });
+        } else if (branch) {
+            const updatedSemester = await updateSemesterBranch(semesterId, branch as string);
+
+            return NextResponse.json({
+                success: true,
+                semester: updatedSemester
+            });
+        }
+
+
+
     } catch (error) {
         console.error("Error updating grades:", error);
         return NextResponse.json(

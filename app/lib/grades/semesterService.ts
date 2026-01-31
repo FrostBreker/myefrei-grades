@@ -90,6 +90,38 @@ export async function updateSemesterGrades(
 }
 
 /**
+ * Update the branch of a semester
+ */
+export async function updateSemesterBranch(
+    semesterId: string,
+    branch: string
+): Promise<UserSemester | null> {
+    const client = await clientPromise;
+    const db = client.db();
+
+    const result = await db.collection<UserSemesterDB>(SEMESTER_COLLECTION)
+        .findOneAndUpdate(
+            { _id: new ObjectId(semesterId) },
+            {
+                $set: {
+                    branch,
+                    updatedAt: new Date()
+                }
+            },
+            { returnDocument: 'after' }
+        );
+
+    if (!result.value) return null;
+
+    return {
+        ...result.value,
+        _id: result.value._id.toString(),
+        userId: result.value.userId.toString(),
+        templateId: result.value.templateId.toString()
+    };
+}
+
+/**
  * Lock/unlock a semester
  */
 export async function toggleSemesterLock(semesterId: string): Promise<UserSemester | null> {
@@ -207,6 +239,7 @@ export async function syncUserSemestersWithYearTemplate(templateId: string): Pro
                     cursus: template.cursus,
                     filiere: template.filiere,
                     groupe: template.groupe,
+                    branch: "",
                     semester: templateSemester.semester,
                     academicYear: template.academicYear,
                     ues: newUEs,

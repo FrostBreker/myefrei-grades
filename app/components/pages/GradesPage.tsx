@@ -1,6 +1,6 @@
 "use client";
 
-import {useState} from "react";
+import {useState, useEffect} from "react";
 import {Card, CardContent} from "@/components/ui/card";
 import {
     Select,
@@ -39,6 +39,9 @@ export default function GradesPage({initialProfile, initialSemesters, userEmail}
 
     const [editingSemester, setEditingSemester] = useState<UserSemester | null>(null);
 
+    // State for available branches and selected branch per semester
+    const [semesterBranches, setSemesterBranches] = useState<Record<string, string[]>>({}); // { semesterId: [branches] }
+    const [selectedBranches, setSelectedBranches] = useState<Record<string, string>>({}); // { semesterId: branch }
 
     // Function to refresh data after mutations
     const refreshData = async () => {
@@ -76,7 +79,7 @@ export default function GradesPage({initialProfile, initialSemesters, userEmail}
             const data = await response.json();
 
             if (data.success) {
-                refreshData();
+                await refreshData();
             }
         } catch (error) {
             console.error("Error switching path:", error);
@@ -104,6 +107,46 @@ export default function GradesPage({initialProfile, initialSemesters, userEmail}
             semesters: pathSemesters
         };
     });
+
+    // Fetch branches for each semester when semesters or activePath change
+    useEffect(() => {
+        const fetchBranches = async () => {
+            const newSemesterBranches: Record<string, string[]> = {};
+            const newSelectedBranches: Record<string, string> = {};
+            for (const sem of semesters) {
+                if (!sem) continue;
+                try {
+                    const res = await fetch(`/api/grades/year-template-by-path?cursus=${sem.cursus}&filiere=${sem.filiere}&groupe=${sem.groupe}&academicYear=${sem.academicYear}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.success && data.template && Array.isArray(data.template.branches) && data.template.branches.length > 0) {
+                            newSemesterBranches[sem._id] = data.template.branches;
+                            newSelectedBranches[sem._id] = sem.branch || "";
+                        }
+                    }
+                } catch (e) { /* ignore */ }
+            }
+            setSemesterBranches(newSemesterBranches);
+            setSelectedBranches(newSelectedBranches);
+        };
+        fetchBranches();
+    }, [semesters, activePath]);
+
+    // Handler for branch change
+    const handleBranchChange = async (semesterId: string, branch: string) => {
+        setSelectedBranches(prev => ({ ...prev, [semesterId]: branch }));
+        // Update on server
+        try {
+            await fetch(`/api/grades/semesters`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ semesterId, branch })
+            });
+            await refreshData();
+        } catch (e) {
+            console.error("Error updating branch:", e);
+        }
+    };
 
     // Show semester editor if editing
     if (editingSemester) {
@@ -182,10 +225,24 @@ export default function GradesPage({initialProfile, initialSemesters, userEmail}
                                     </TabsList>
 
                                     {/* Semester 1 Content */}
-                                    <GradeSemesterTab semester={s1} semNumber={1} setEditingSemester={setEditingSemester}/>
+                                    <GradeSemesterTab
+                                        semester={s1}
+                                        semNumber={1}
+                                        setEditingSemester={setEditingSemester}
+                                        branches={s1 ? semesterBranches[s1._id] : []}
+                                        selectedBranch={s1 ? selectedBranches[s1._id] : ""}
+                                        onBranchChange={s1 ? (branch) => handleBranchChange(s1._id, branch) : undefined}
+                                    />
 
                                     {/* Semester 2 Content */}
-                                    <GradeSemesterTab semester={s2} semNumber={2} setEditingSemester={setEditingSemester}/>
+                                    <GradeSemesterTab
+                                        semester={s2}
+                                        semNumber={2}
+                                        setEditingSemester={setEditingSemester}
+                                        branches={s2 ? semesterBranches[s2._id] : []}
+                                        selectedBranch={s2 ? selectedBranches[s2._id] : ""}
+                                        onBranchChange={s2 ? (branch) => handleBranchChange(s2._id, branch) : undefined}
+                                    />
                                 </Tabs>
                             </TabsContent>
                         );

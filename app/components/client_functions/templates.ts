@@ -17,7 +17,8 @@ export const loadAvailableTemplates = async (disabled: boolean | undefined, setL
                 groupe: template.groupe,
                 academicYear: template.academicYear,
                 hasS1: template.semesters.some((s: SemesterData) => s.semester === 1),
-                hasS2: template.semesters.some((s: SemesterData) => s.semester === 2)
+                hasS2: template.semesters.some((s: SemesterData) => s.semester === 2),
+                branches: template.branches || []
             }));
 
             setTemplateOptions(options);

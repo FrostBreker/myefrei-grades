@@ -29,10 +29,10 @@ const GRADE_TYPES: { value: GradeType; label: string }[] = [
     { value: "TP", label: "TP - Travaux Pratiques" },
     { value: "TD", label: "TD - Travaux Dirigés" },
     { value: "PRJ", label: "PRJ - Projet" },
-    { value: "DE", label: "DE - Devoir à la Maison" },
+    { value: "DE", label: "DE - Devoir Écrit" },
     { value: "CC", label: "CC - Contrôle Continu" },
-    { value: "CO", label: "CO - Contrôle" },
-    { value: "CE", label: "CE - Contrôle Final" },
+    { value: "CO", label: "CO - Contrôle Oral" },
+    { value: "CE", label: "CE - Contrôle Écrit" },
     { value: "TOEIC", label: "TOEIC" },
     { value: "AUTRE", label: "Autre" }
 ];
@@ -45,7 +45,11 @@ export default function CreateYearTemplatePage() {
     const [cursus, setCursus] = useState("");
     const [filiere, setFiliere] = useState("");
     const [groupe, setGroupe] = useState("");
+    const [branches, setBranches] = useState<string[]>([]);
     const [academicYear, setAcademicYear] = useState("");
+
+    // Branches
+    const [newBranch, setNewBranch] = useState("");
 
     // Semester toggles
     const [defineS1, setDefineS1] = useState(true);
@@ -313,6 +317,7 @@ export default function CreateYearTemplatePage() {
                     cursus,
                     filiere,
                     groupe,
+                    branches,
                     academicYear,
                     semesters
                 })
@@ -686,6 +691,51 @@ export default function CreateYearTemplatePage() {
                                         value={groupe}
                                         onChange={(e) => setGroupe(e.target.value.toUpperCase())}
                                     />
+                                </div>
+
+                                <div>
+                                    <Label>Branches (optionnel)</Label>
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                        {branches.map((branch, index) => (
+                                            <Badge
+                                                key={index}
+                                                variant="secondary"
+                                                className="flex items-center gap-2"
+                                            >
+                                                {branch}
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-5 w-5 p-0  cursor-pointer"
+                                                    onClick={() => {
+                                                        const newBranches = [...branches];
+                                                        newBranches.splice(index, 1);
+                                                        setBranches(newBranches);
+                                                    }}
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </Button>
+                                            </Badge>
+                                        ))}
+                                        <Input
+                                            className="min-w-37.5"
+                                            placeholder="SC1,INT1, INT2"
+                                            value={newBranch}
+                                            onChange={(e) => setNewBranch(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter" && newBranch.trim()) {
+                                                    e.preventDefault();
+                                                    if (!branches.includes(newBranch.trim())) {
+                                                        setBranches([...branches, newBranch.trim()]);
+                                                        setNewBranch("");
+                                                    } else {
+                                                        alert("Cette branche existe déjà.");
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2">

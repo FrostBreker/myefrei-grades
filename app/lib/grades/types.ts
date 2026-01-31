@@ -9,6 +9,9 @@ export type Filiere = string;
 // Group types - accepts any string to support custom groups
 export type Groupe = string;
 
+// Branch - accepts any string to support custom branches
+export type Branch = string;
+
 // Grade types for different evaluations
 export type GradeType = "TP" | "TD" | "PRJ" | "DE" | "CC" | "CO" | "CE" | "TOEIC" | "AUTRE";
 
@@ -61,6 +64,7 @@ export interface AcademicYearTemplateDB {
     cursus: Cursus;
     filiere: Filiere;
     groupe: Groupe;
+    branches: Branch[];
     academicYear: string;
     semesters: SemesterData[];
     version: number;
@@ -84,6 +88,7 @@ export interface UserSemesterDB {
     cursus: Cursus;
     filiere: Filiere;
     groupe: Groupe;
+    branch: Branch;
     semester: number;
     academicYear: string;
     ues: UE[];

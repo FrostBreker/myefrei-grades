@@ -1,5 +1,5 @@
 import clientPromise from "../mongodb";
-import { ObjectId } from "mongodb";
+import {ObjectId} from "mongodb";
 import {
     AcademicProfileDB,
     AcademicProfile,
@@ -8,9 +8,9 @@ import {
     Filiere,
     Groupe,
     AcademicYearTemplateDB,
-    UserSemesterDB
+    UserSemesterDB, Branch
 } from "./types";
-import { getCurrentAcademicYear } from "./utils";
+import {getCurrentAcademicYear} from "./utils";
 
 const PROFILE_COLLECTION = "academicProfiles";
 const YEAR_TEMPLATE_COLLECTION = "academicYearTemplates";
@@ -25,6 +25,7 @@ async function createUserSemestersFromTemplate(
     cursus: Cursus,
     filiere: Filiere,
     groupe: Groupe,
+    branch: Branch,
     academicYear: string
 ): Promise<void> {
     const client = await clientPromise;
@@ -60,6 +61,10 @@ async function createUserSemestersFromTemplate(
     // Create user semesters for each semester in the template that doesn't exist yet
     const semestersToCreate: Omit<UserSemesterDB, '_id'>[] = [];
 
+    if (!branch) {
+        branch = "";
+    }
+
     for (const semesterData of template.semesters) {
         // Skip if user already has this semester
         if (existingSemesterNumbers.includes(semesterData.semester)) {
@@ -76,6 +81,7 @@ async function createUserSemestersFromTemplate(
             cursus,
             filiere,
             groupe,
+            branch,
             semester: semesterData.semester,
             academicYear,
             ues: semesterData.ues.map(ue => ({
@@ -113,7 +119,7 @@ export async function getAcademicProfile(userId: string): Promise<AcademicProfil
     const db = client.db();
 
     const profile = await db.collection<AcademicProfileDB>(PROFILE_COLLECTION)
-        .findOne({ userId: new ObjectId(userId) });
+        .findOne({userId: new ObjectId(userId)});
 
     if (!profile) return null;
 
@@ -132,13 +138,15 @@ export async function createAcademicProfile(
     userEmail: string,
     cursus: Cursus,
     filiere: Filiere,
-    groupe: Groupe
+    groupe: Groupe,
+    branch: Branch,
+    academicYearParam?: string
 ): Promise<AcademicProfile> {
     const client = await clientPromise;
     const db = client.db();
 
     const currentYear = new Date().getFullYear();
-    const academicYear = getCurrentAcademicYear();
+    const academicYear = academicYearParam || getCurrentAcademicYear();
 
     // Create first academic path
     const firstPath: AcademicPath = {
@@ -164,7 +172,7 @@ export async function createAcademicProfile(
         .insertOne(newProfile);
 
     // Create user semesters from matching year template
-    await createUserSemestersFromTemplate(userId, userEmail, cursus, filiere, groupe, academicYear);
+    await createUserSemestersFromTemplate(userId, userEmail, cursus, filiere, groupe, branch, academicYear);
 
     return {
         ...newProfile,
@@ -181,6 +189,7 @@ export async function addAcademicPath(
     cursus: Cursus,
     filiere: Filiere,
     groupe: Groupe,
+    branch: Branch,
     academicYear?: string,
     setAsActive?: boolean,
     userEmail?: string
@@ -205,8 +214,8 @@ export async function addAcademicPath(
         // Step 1: Deactivate all existing paths
         await db.collection<AcademicProfileDB>(PROFILE_COLLECTION)
             .updateOne(
-                { userId: new ObjectId(userId) },
-                { $set: { "paths.$[].isActive": false } }
+                {userId: new ObjectId(userId)},
+                {$set: {"paths.$[].isActive": false}}
             );
 
         // Step 2: Add the new path with isActive = true
@@ -216,12 +225,12 @@ export async function addAcademicPath(
     // Add the new path
     const result = await db.collection<AcademicProfileDB>(PROFILE_COLLECTION)
         .findOneAndUpdate(
-            { userId: new ObjectId(userId) },
+            {userId: new ObjectId(userId)},
             {
-                $push: { paths: newPath },
-                $set: { updatedAt: new Date() }
+                $push: {paths: newPath},
+                $set: {updatedAt: new Date()}
             },
-            { returnDocument: 'after' }
+            {returnDocument: 'after'}
         );
 
     if (!result.value) return null;
@@ -229,7 +238,7 @@ export async function addAcademicPath(
 
     // Create user semesters from matching year template
     const email = userEmail || result.value.userEmail;
-    await createUserSemestersFromTemplate(userId, email, cursus, filiere, groupe, pathAcademicYear);
+    await createUserSemestersFromTemplate(userId, email, cursus, filiere, groupe,branch, pathAcademicYear);
 
     return {
         ...result.value,
@@ -249,7 +258,7 @@ export async function setActivePath(
     const db = client.db();
 
     const profile = await db.collection<AcademicProfileDB>(PROFILE_COLLECTION)
-        .findOne({ userId: new ObjectId(userId) });
+        .findOne({userId: new ObjectId(userId)});
 
     if (!profile) return null;
 
@@ -261,14 +270,14 @@ export async function setActivePath(
 
     const result = await db.collection<AcademicProfileDB>(PROFILE_COLLECTION)
         .findOneAndUpdate(
-            { userId: new ObjectId(userId) },
+            {userId: new ObjectId(userId)},
             {
                 $set: {
                     paths: updatedPaths,
                     updatedAt: new Date()
                 }
             },
-            { returnDocument: 'after' }
+            {returnDocument: 'after'}
         );
 
     if (!result.value) return null;
@@ -292,11 +301,11 @@ export async function removeAcademicPath(
 
     const result = await db.collection<AcademicProfileDB>(PROFILE_COLLECTION)
         .updateOne(
-            { userId: new ObjectId(userId) },
+            {userId: new ObjectId(userId)},
             {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                $pull: { paths: { id: pathId } as any },
-                $set: { updatedAt: new Date() }
+                $pull: {paths: {id: pathId} as any},
+                $set: {updatedAt: new Date()}
             }
         );
 

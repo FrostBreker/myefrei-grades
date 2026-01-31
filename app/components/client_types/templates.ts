@@ -5,4 +5,5 @@ export interface TemplateOption {
     academicYear: string;
     hasS1: boolean;
     hasS2: boolean;
+    branches?: string[]; // Ajouté pour la gestion des branches
 }

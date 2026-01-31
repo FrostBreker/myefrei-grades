@@ -1,12 +1,12 @@
 import clientPromise from "../mongodb";
-import { ObjectId } from "mongodb";
+import {ObjectId} from "mongodb";
 import {
     AcademicYearTemplateDB,
     AcademicYearTemplate,
     SemesterData,
     Cursus,
     Filiere,
-    Groupe
+    Groupe, Branch
 } from "./types";
 
 const COLLECTION_NAME = "academicYearTemplates";
@@ -27,7 +27,7 @@ export async function getAllYearTemplates(): Promise<AcademicYearTemplate[]> {
 
     const templates = await db.collection<AcademicYearTemplateDB>(COLLECTION_NAME)
         .find({})
-        .sort({ academicYear: -1, cursus: 1, filiere: 1 })
+        .sort({academicYear: -1, cursus: 1, filiere: 1})
         .toArray();
 
     return templates.map(t => ({
@@ -44,7 +44,7 @@ export async function getYearTemplateById(templateId: string): Promise<AcademicY
     const db = client.db();
 
     const template = await db.collection<AcademicYearTemplateDB>(COLLECTION_NAME)
-        .findOne({ _id: new ObjectId(templateId) });
+        .findOne({_id: new ObjectId(templateId)});
 
     if (!template) return null;
 
@@ -62,7 +62,7 @@ export async function getYearTemplateByCode(code: string): Promise<AcademicYearT
     const db = client.db();
 
     const template = await db.collection<AcademicYearTemplateDB>(COLLECTION_NAME)
-        .findOne({ code });
+        .findOne({code});
 
     if (!template) return null;
 
@@ -84,8 +84,8 @@ export async function getYearTemplatesByProfile(
     const db = client.db();
 
     const templates = await db.collection<AcademicYearTemplateDB>(COLLECTION_NAME)
-        .find({ cursus, filiere, groupe })
-        .sort({ academicYear: -1 })
+        .find({cursus, filiere, groupe})
+        .sort({academicYear: -1})
         .toArray();
 
     return templates.map(t => ({
@@ -101,6 +101,7 @@ export async function createYearTemplate(
     cursus: Cursus,
     filiere: Filiere,
     groupe: Groupe,
+    branches: Branch[],
     academicYear: string,
     semesters: SemesterData[]
 ): Promise<AcademicYearTemplate> {
@@ -112,7 +113,7 @@ export async function createYearTemplate(
 
     // Check if already exists
     const existing = await db.collection<AcademicYearTemplateDB>(COLLECTION_NAME)
-        .findOne({ code });
+        .findOne({code});
 
     if (existing) {
         throw new Error("Template already exists for this year/filiere/groupe");
@@ -124,6 +125,7 @@ export async function createYearTemplate(
         cursus,
         filiere,
         groupe,
+        branches,
         academicYear,
         semesters,
         version: 1,
@@ -145,62 +147,35 @@ export async function createYearTemplate(
  */
 export async function updateYearTemplate(
     templateId: string,
-    semesters: SemesterData[]
+    templateData: AcademicYearTemplateDB
 ): Promise<AcademicYearTemplate | null> {
     const client = await clientPromise;
     const db = client.db();
 
-    const result = await db.collection<AcademicYearTemplateDB>(COLLECTION_NAME)
-        .findOneAndUpdate(
-            { _id: new ObjectId(templateId) },
-            {
-                $set: {
-                    semesters,
-                    updatedAt: new Date()
-                },
-                $inc: { version: 1 }
-            },
-            { returnDocument: 'after' }
-        );
-
-    if (!result.value) return null;
-
-    return {
-        ...result.value,
-        _id: result.value._id.toString()
-    };
-}
-
-/**
- * Add a semester to existing template
- */
-export async function addSemesterToTemplate(
-    templateId: string,
-    semesterData: SemesterData
-): Promise<AcademicYearTemplate | null> {
-    const client = await clientPromise;
-    const db = client.db();
-
-    // Check if semester already exists
-    const template = await db.collection<AcademicYearTemplateDB>(COLLECTION_NAME)
-        .findOne({ _id: new ObjectId(templateId) });
-
-    if (!template) return null;
-
-    const existingSemester = template.semesters.find(s => s.semester === semesterData.semester);
-    if (existingSemester) {
-        throw new Error(`Semester ${semesterData.semester} already exists in this template`);
+    // Remove _id from templateData before replacing
+    const {_id, cursus, filiere, groupe, academicYear, ...dataWithoutId} = templateData;
+    if (!_id) {
+        throw new Error("Template data must include _id");
     }
-
+    // Recompute code and name
+    const code = generateYearCode(cursus, filiere, groupe, academicYear);
+    const name = `${filiere} ${groupe} - ${academicYear}`;
     const result = await db.collection<AcademicYearTemplateDB>(COLLECTION_NAME)
-        .findOneAndUpdate(
-            { _id: new ObjectId(templateId) },
+        .findOneAndReplace(
+            {_id: new ObjectId(templateId)},
             {
-                $push: { semesters: semesterData },
-                $set: { updatedAt: new Date() },
-                $inc: { version: 1 }
+                ...dataWithoutId,
+                cursus,
+                filiere,
+                groupe,
+                academicYear,
+                code,
+                name,
+                version: templateData.version + 1,
+                createdAt: new Date(templateData.createdAt),
+                updatedAt: new Date()
             },
-            { returnDocument: 'after' }
+            {returnDocument: 'after'}
         );
 
     if (!result.value) return null;
@@ -208,37 +183,7 @@ export async function addSemesterToTemplate(
     return {
         ...result.value,
         _id: result.value._id.toString()
-    };
-}
-
-/**
- * Remove a semester from template
- */
-export async function removeSemesterFromTemplate(
-    templateId: string,
-    semesterNumber: number
-): Promise<AcademicYearTemplate | null> {
-    const client = await clientPromise;
-    const db = client.db();
-
-    const result = await db.collection<AcademicYearTemplateDB>(COLLECTION_NAME)
-        .findOneAndUpdate(
-            { _id: new ObjectId(templateId) },
-            {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                $pull: { semesters: { semester: semesterNumber } } as any,
-                $set: { updatedAt: new Date() },
-                $inc: { version: 1 }
-            },
-            { returnDocument: 'after' }
-        );
-
-    if (!result.value) return null;
-
-    return {
-        ...result.value,
-        _id: result.value._id.toString()
-    };
+    }
 }
 
 /**
@@ -249,41 +194,7 @@ export async function deleteYearTemplate(templateId: string): Promise<boolean> {
     const db = client.db();
 
     const result = await db.collection<AcademicYearTemplateDB>(COLLECTION_NAME)
-        .deleteOne({ _id: new ObjectId(templateId) });
+        .deleteOne({_id: new ObjectId(templateId)});
 
     return result.deletedCount > 0;
-}
-
-/**
- * Check if template exists
- */
-export async function yearTemplateExists(
-    cursus: Cursus,
-    filiere: Filiere,
-    groupe: Groupe,
-    academicYear: string
-): Promise<boolean> {
-    const client = await clientPromise;
-    const db = client.db();
-
-    const code = generateYearCode(cursus, filiere, groupe, academicYear);
-    const count = await db.collection<AcademicYearTemplateDB>(COLLECTION_NAME)
-        .countDocuments({ code });
-
-    return count > 0;
-}
-
-/**
- * Get current academic year in format YYYY-YYYY
- */
-export function getCurrentAcademicYear(): string {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-
-    // If before September, we're in the previous academic year
-    if (month < 8) {
-        return `${year - 1}-${year}`;
-    }
-    return `${year}-${year + 1}`;
 }

@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
+import {NextResponse} from "next/server";
 import {
     getAllYearTemplates,
     createYearTemplate,
     updateYearTemplate,
     deleteYearTemplate
 } from "@lib/grades/yearTemplateService";
-import { Cursus, Filiere, Groupe, SemesterData } from "@lib/grades/types";
+import {Branch, Cursus, Filiere, Groupe, SemesterData} from "@lib/grades/types";
 import {requestAdminCheck, requestAuthCheck} from "@lib/api/request_check";
 
 /**
@@ -25,8 +25,8 @@ export async function GET() {
     } catch (error) {
         console.error("Error getting year templates:", error);
         return NextResponse.json(
-            { error: "Erreur serveur" },
-            { status: 500 }
+            {error: "Erreur serveur"},
+            {status: 500}
         );
     }
 }
@@ -39,21 +39,21 @@ export async function POST(request: Request) {
         const isAuthorized = await requestAuthCheck();
         if (!isAuthorized) return;
 
-        const { cursus, filiere, groupe, academicYear, semesters } = await request.json();
+        const {cursus, filiere, groupe, branches, academicYear, semesters} = await request.json();
 
         // Validate required fields
         if (!cursus || !filiere || !groupe || !academicYear || !semesters) {
             return NextResponse.json(
-                { error: "Champs requis manquants" },
-                { status: 400 }
+                {error: "Champs requis manquants"},
+                {status: 400}
             );
         }
 
         // Validate semesters array
         if (!Array.isArray(semesters) || semesters.length === 0) {
             return NextResponse.json(
-                { error: "Au moins un semestre est requis" },
-                { status: 400 }
+                {error: "Au moins un semestre est requis"},
+                {status: 400}
             );
         }
 
@@ -62,6 +62,7 @@ export async function POST(request: Request) {
             cursus as Cursus,
             filiere as Filiere,
             groupe as Groupe,
+            branches as Branch[],
             academicYear,
             semesters as SemesterData[]
         );
@@ -76,15 +77,15 @@ export async function POST(request: Request) {
         if (error instanceof Error) {
             if (error.message.includes("already exists")) {
                 return NextResponse.json(
-                    { error: "Un template existe déjà pour cette année/filière/groupe" },
-                    { status: 409 }
+                    {error: "Un template existe déjà pour cette année/filière/groupe"},
+                    {status: 409}
                 );
             }
         }
 
         return NextResponse.json(
-            { error: "Erreur serveur" },
-            { status: 500 }
+            {error: "Erreur serveur"},
+            {status: 500}
         );
     }
 }
@@ -97,21 +98,21 @@ export async function PUT(request: Request) {
         const isAuthorized = await requestAdminCheck();
         if (!isAuthorized) return;
 
-        const { templateId, semesters } = await request.json();
+        const {templateId, templateData} = await request.json();
 
         if (!templateId) {
             return NextResponse.json(
-                { error: "Template ID requis" },
-                { status: 400 }
+                {error: "Template ID requis"},
+                {status: 400}
             );
         }
 
-        const template = await updateYearTemplate(templateId, semesters);
+        const template = await updateYearTemplate(templateId, templateData);
 
         if (!template) {
             return NextResponse.json(
-                { error: "Template non trouvé" },
-                { status: 404 }
+                {error: "Template non trouvé"},
+                {status: 404}
             );
         }
 
@@ -122,8 +123,8 @@ export async function PUT(request: Request) {
     } catch (error) {
         console.error("Error updating year template:", error);
         return NextResponse.json(
-            { error: "Erreur serveur" },
-            { status: 500 }
+            {error: "Erreur serveur"},
+            {status: 500}
         );
     }
 }
@@ -136,13 +137,13 @@ export async function DELETE(request: Request) {
         const isAuthorized = await requestAdminCheck();
         if (!isAuthorized) return;
 
-        const { searchParams } = new URL(request.url);
+        const {searchParams} = new URL(request.url);
         const templateId = searchParams.get('templateId');
 
         if (!templateId) {
             return NextResponse.json(
-                { error: "Template ID requis" },
-                { status: 400 }
+                {error: "Template ID requis"},
+                {status: 400}
             );
         }
 
@@ -150,8 +151,8 @@ export async function DELETE(request: Request) {
 
         if (!deleted) {
             return NextResponse.json(
-                { error: "Template non trouvé" },
-                { status: 404 }
+                {error: "Template non trouvé"},
+                {status: 404}
             );
         }
 
@@ -162,8 +163,8 @@ export async function DELETE(request: Request) {
     } catch (error) {
         console.error("Error deleting year template:", error);
         return NextResponse.json(
-            { error: "Erreur serveur" },
-            { status: 500 }
+            {error: "Erreur serveur"},
+            {status: 500}
         );
     }
 }
