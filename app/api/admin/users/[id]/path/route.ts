@@ -1,7 +1,7 @@
 import {NextRequest, NextResponse} from "next/server";
 import clientPromise from "@lib/mongodb";
 import {Db, ObjectId} from "mongodb";
-import {AcademicPath, Cursus, Filiere, Groupe, AcademicYearTemplateDB, UserSemesterDB, UE, Module, GradeEntry} from "@lib/grades/types";
+import {AcademicPath, Cursus, Filiere, Groupe, AcademicYearTemplateDB, UserSemesterDB, UE, Module, GradeEntry, Branch} from "@lib/grades/types";
 import {getCurrentAcademicYear} from "@lib/grades/utils";
 import {requestAdminCheck} from "@lib/api/request_check";
 
@@ -18,7 +18,7 @@ export async function PUT(request: NextRequest, {params}: { params: Promise<{ id
         if (!isAuthorized) return;
 
         const {id: userId} = await params;
-        const {cursus, filiere, groupe, academicYear} = await request.json();
+        const {cursus, filiere, groupe, branch, academicYear} = await request.json();
 
         if (!cursus || !filiere || !groupe) {
             return NextResponse.json(
@@ -90,6 +90,7 @@ export async function PUT(request: NextRequest, {params}: { params: Promise<{ id
             cursus as Cursus,
             filiere as Filiere,
             groupe as Groupe,
+            branch as Branch,
             pathAcademicYear
         );
 
@@ -151,6 +152,7 @@ async function createUserSemestersFromTemplate(
     cursus: Cursus,
     filiere: Filiere,
     groupe: Groupe,
+    branch: Branch,
     academicYear: string
 ): Promise<void> {
     // Find matching year template
@@ -197,6 +199,7 @@ async function createUserSemestersFromTemplate(
             cursus,
             filiere,
             groupe,
+            branch,
             semester: semesterData.semester,
             academicYear,
             ues: semesterData.ues.map((ue: UE) => ({

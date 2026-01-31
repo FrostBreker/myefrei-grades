@@ -21,6 +21,7 @@ export async function getUserBySession(session: Session | null, request: NextReq
         userDB = {
             _id: new ObjectId(),
             email: session.user.email,
+            emailVerified: false,
             image: session.user.image || '',
             clientIP,
             createdAt: new Date(),
@@ -57,6 +58,7 @@ export async function getUserBySession(session: Session | null, request: NextReq
     return {
         _id: userDB._id.toString() as unknown as string,
         email: userDB.email,
+        emailVerified: userDB.emailVerified,
         image: userDB.image,
         clientIP: userDB.clientIP,
         createdAt: userDB.createdAt,

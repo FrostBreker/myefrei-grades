@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@api/auth/[...nextauth]/route";
 import clientPromise from "@lib/mongodb";
-import {requestAuthCheck} from "@lib/api/request_check";
 
 /**
  * Get available academic years from existing year templates
@@ -8,8 +9,13 @@ import {requestAuthCheck} from "@lib/api/request_check";
  */
 export async function GET(request: Request) {
     try {
-        const isAuthorized = await requestAuthCheck();
-        if (!isAuthorized) return;
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user?.email) {
+            return NextResponse.json(
+                { error: "Non autorisé" },
+                { status: 401 }
+            );
+        }
 
         const { searchParams } = new URL(request.url);
         const cursus = searchParams.get('cursus');

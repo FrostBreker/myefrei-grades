@@ -1,47 +1,46 @@
-import { NextResponse } from "next/server";
-import { createAcademicProfile, getAcademicProfile } from "@lib/grades/profileService";
-import { Cursus, Filiere, Groupe } from "@lib/grades/types";
+import {NextResponse} from "next/server";
+import {getServerSession} from "next-auth";
+import {authOptions} from "@api/auth/[...nextauth]/route";
+import {addAcademicPath, createAcademicProfile, getAcademicProfile} from "@lib/grades/profileService";
+import {Branch, Cursus, Filiere, Groupe} from "@lib/grades/types";
 import clientPromise from "@lib/mongodb";
-import {requestAuthCheck} from "@lib/api/request_check";
 
 export async function POST(request: Request) {
     try {
         // Check authentication
-        const session = await requestAuthCheck();
-        if (!session || !session?.user) return;
-
-        if (!session.user.email) {
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user?.email) {
             return NextResponse.json(
-                { error: "Email utilisateur manquant" },
-                { status: 400 }
+                {error: "Non autorisé"},
+                {status: 401}
             );
         }
 
-        const { cursus, filiere, groupe } = await request.json();
+        const {cursus, filiere, groupe, branch, academicYear} = await request.json();
 
         // Validate inputs
         if (!cursus || !filiere || !groupe) {
             return NextResponse.json(
-                { error: "Paramètres manquants" },
-                { status: 400 }
+                {error: "Paramètres manquants"},
+                {status: 400}
             );
         }
 
         // Get user ID
         const client = await clientPromise;
         const db = client.db();
-        const user = await db.collection('users').findOne({ email: session.user.email });
+        const user = await db.collection('users').findOne({email: session.user.email});
 
         if (!user) {
             return NextResponse.json(
-                { error: "Utilisateur non trouvé" },
-                { status: 404 }
+                {error: "Utilisateur non trouvé"},
+                {status: 404}
             );
         }
 
         // Check if profile already exists
         const existingProfile = await getAcademicProfile(user._id.toString());
-        if (existingProfile) {
+        if (existingProfile && existingProfile.paths.length > 0) {
             console.log("Profile already exists for user:", user.email, "Profile ID:", existingProfile._id);
             return NextResponse.json(
                 {
@@ -49,8 +48,27 @@ export async function POST(request: Request) {
                     exists: true,
                     profileId: existingProfile._id
                 },
-                { status: 409 }
+                {status: 409}
             );
+        } else if (existingProfile && existingProfile.paths.length === 0) {
+            console.log("Profile exists without paths for user:", user.email, "Adding first path.");
+            // Handle case where profile exists but has no paths
+            const profile = await addAcademicPath(
+                user._id.toString(),
+                cursus as Cursus,
+                filiere as Filiere,
+                groupe as Groupe,
+                branch as Branch,
+                academicYear as string,
+                true,
+                user.email
+            );
+
+            return NextResponse.json({
+                success: true,
+                profile
+            });
+
         }
 
         console.log("Creating new academic profile for user:", user.email);
@@ -62,6 +80,8 @@ export async function POST(request: Request) {
             cursus as Cursus,
             filiere as Filiere,
             groupe as Groupe,
+            branch as Branch,
+            academicYear as string
         );
 
         return NextResponse.json({
@@ -71,8 +91,8 @@ export async function POST(request: Request) {
     } catch (error) {
         console.error("Error setting up profile:", error);
         return NextResponse.json(
-            { error: "Erreur serveur" },
-            { status: 500 }
+            {error: "Erreur serveur"},
+            {status: 500}
         );
     }
 }
@@ -80,18 +100,23 @@ export async function POST(request: Request) {
 export async function GET() {
     try {
         // Check authentication
-        const session = await requestAuthCheck();
-        if (!session || !session?.user) return;
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user?.email) {
+            return NextResponse.json(
+                {error: "Non autorisé"},
+                {status: 401}
+            );
+        }
 
         // Get user ID
         const client = await clientPromise;
         const db = client.db();
-        const user = await db.collection('users').findOne({ email: session.user.email });
+        const user = await db.collection('users').findOne({email: session.user.email});
 
         if (!user) {
             return NextResponse.json(
-                { error: "Utilisateur non trouvé" },
-                { status: 404 }
+                {error: "Utilisateur non trouvé"},
+                {status: 404}
             );
         }
 
@@ -100,10 +125,10 @@ export async function GET() {
 
         console.log("GET setup-profile - User:", user.email, "Has profile:", !!profile);
 
-        if (!profile) {
+        if (!profile || profile?.paths.length === 0) {
             return NextResponse.json(
-                { exists: false },
-                { status: 200 }
+                {exists: false},
+                {status: 200}
             );
         }
 
@@ -114,8 +139,8 @@ export async function GET() {
     } catch (error) {
         console.error("Error getting profile:", error);
         return NextResponse.json(
-            { error: "Erreur serveur" },
-            { status: 500 }
+            {error: "Erreur serveur"},
+            {status: 500}
         );
     }
 }

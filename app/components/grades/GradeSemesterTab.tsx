@@ -5,16 +5,20 @@ import {Badge} from "@/components/ui/badge";
 import {Button} from "@/components/ui/button";
 import {BookOpen, Edit} from "lucide-react";
 import {Module, UserSemester} from "@lib/grades/types";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
 
 type Props = {
     semester: UserSemester | undefined;
     semNumber: number;
     setEditingSemester: (semester: UserSemester) => void;
+    branches?: string[]; // Liste des branches disponibles pour ce semestre
+    selectedBranch?: string; // Branche sélectionnée pour ce semestre
+    onBranchChange?: (branch: string) => void; // Callback lors du changement de branche
 };
 
-function GradeSemesterTab({semester, semNumber, setEditingSemester}: Props) {
+function GradeSemesterTab({semester, semNumber, setEditingSemester, branches = [], selectedBranch = "", onBranchChange}: Props) {
     return (
-        <TabsContent value={"s"+semNumber}>
+        <TabsContent value={"s" + semNumber}>
             {semester ? (
                 <Card className="hover:shadow-lg transition-shadow">
                     <CardHeader>
@@ -39,7 +43,7 @@ function GradeSemesterTab({semester, semNumber, setEditingSemester}: Props) {
                     <CardContent>
                         <div className="space-y-4">
                             {/* Stats summary */}
-                            <div className="grid grid-cols-3 gap-4 text-center pb-4 border-b">
+                            <div className={`grid ${branches.length > 0 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}  gap-2 text-center pb-4 border-b`}>
                                 <div>
                                     <div className="text-2xl font-bold">{semester.ues.length}</div>
                                     <div className="text-xs text-muted-foreground">UEs</div>
@@ -54,6 +58,29 @@ function GradeSemesterTab({semester, semNumber, setEditingSemester}: Props) {
                                     </div>
                                     <div className="text-xs text-muted-foreground">ECTS Obtenus</div>
                                 </div>
+                                {branches.length > 0 && (
+                                    <div>
+                                        {
+                                            onBranchChange ? (
+                                                <Select value={selectedBranch} onValueChange={onBranchChange}>
+                                                    <SelectTrigger className="mx-auto cursor-pointer">
+                                                        <SelectValue placeholder="Aucun"/>
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {branches.map((branch) => (
+                                                            <SelectItem className={"cursor-pointer"} key={branch} value={branch}>{branch}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            ) : (
+                                                <div className="text-2xl font-bold">
+                                                    {semester.branch !== null ? semester.branch : "-"}
+                                                </div>
+                                            )
+                                        }
+                                        <div className="text-xs text-muted-foreground">Groupe</div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Grades overview */}
@@ -117,7 +144,7 @@ function GradeSemesterTab({semester, semNumber, setEditingSemester}: Props) {
                                 onClick={() => setEditingSemester(semester)}
                                 className="w-full  cursor-pointer"
                             >
-                                <Edit className="h-4 w-4 mr-2" />
+                                <Edit className="h-4 w-4 mr-2"/>
                                 Gérer mes notes
                             </Button>
                         </div>
@@ -126,11 +153,11 @@ function GradeSemesterTab({semester, semNumber, setEditingSemester}: Props) {
             ) : (
                 <Card className="border-2 border-dashed">
                     <CardContent className="p-12 text-center">
-                        <BookOpen className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                        <BookOpen className="h-16 w-16 mx-auto mb-4 text-muted-foreground"/>
                         <h3 className="text-xl font-bold mb-2">📚 Semestre {semNumber} non défini</h3>
                         <p className="text-muted-foreground">
                             Le semestre {semNumber} n&apos;est pas encore disponible pour ce parcours.
-                            <br />
+                            <br/>
                             Il sera automatiquement ajouté quand l&apos;administration le définira.
                         </p>
                     </CardContent>

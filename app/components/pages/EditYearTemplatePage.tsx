@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
+import {useState, useEffect} from "react";
+import {useRouter} from "next/navigation";
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
+import {Button} from "@/components/ui/button";
+import {Badge} from "@/components/ui/badge";
+import {Input} from "@/components/ui/input";
+import {Label} from "@/components/ui/label";
+import {Checkbox} from "@/components/ui/checkbox";
 import {
     Select,
     SelectContent,
@@ -26,27 +26,27 @@ import {
     AlertDescription,
     AlertTitle,
 } from "@/components/ui/alert";
-import { Plus, Trash2, Shield, Loader2, X, ArrowLeft, Save, AlertCircle, RefreshCw } from "lucide-react";
-import { UE, Module as ModuleType, GradeEntry, GradeType, SemesterData, AcademicYearTemplate } from "@lib/grades/types";
+import {Plus, Trash2, Shield, Loader2, X, ArrowLeft, Save, AlertCircle, RefreshCw} from "lucide-react";
+import {UE, Module as ModuleType, GradeEntry, GradeType, SemesterData, AcademicYearTemplate} from "@lib/grades/types";
 import Link from "next/link";
 
 const GRADE_TYPES: { value: GradeType; label: string }[] = [
-    { value: "TP", label: "TP - Travaux Pratiques" },
-    { value: "TD", label: "TD - Travaux Dirigés" },
-    { value: "PRJ", label: "PRJ - Projet" },
-    { value: "DE", label: "DE - Devoir Écrit" },
-    { value: "CC", label: "CC - Contrôle Continu" },
-    { value: "CO", label: "CO - Contrôle Oral" },
-    { value: "CE", label: "CE - Contrôle Écrit" },
-    { value: "TOEIC", label: "TOEIC" },
-    { value: "AUTRE", label: "Autre" }
+    {value: "TP", label: "TP - Travaux Pratiques"},
+    {value: "TD", label: "TD - Travaux Dirigés"},
+    {value: "PRJ", label: "PRJ - Projet"},
+    {value: "DE", label: "DE - Devoir Écrit"},
+    {value: "CC", label: "CC - Contrôle Continu"},
+    {value: "CO", label: "CO - Contrôle Oral"},
+    {value: "CE", label: "CE - Contrôle Écrit"},
+    {value: "TOEIC", label: "TOEIC"},
+    {value: "AUTRE", label: "Autre"}
 ];
 
 interface EditYearTemplatePageProps {
     templateId: string;
 }
 
-export default function EditYearTemplatePage({ templateId }: EditYearTemplatePageProps) {
+export default function EditYearTemplatePage({templateId}: EditYearTemplatePageProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -63,6 +63,14 @@ export default function EditYearTemplatePage({ templateId }: EditYearTemplatePag
     // Semester 2 data
     const [uesS2, setUesS2] = useState<UE[]>([]);
 
+    // Add state for editable fields
+    const [cursus, setCursus] = useState("");
+    const [filiere, setFiliere] = useState("");
+    const [groupe, setGroupe] = useState("");
+    const [academicYear, setAcademicYear] = useState("");
+    const [branches, setBranches] = useState<string[]>([]);
+    const [newBranch, setNewBranch] = useState("");
+
     useEffect(() => {
         loadTemplate();
     }, [templateId]);
@@ -74,6 +82,11 @@ export default function EditYearTemplatePage({ templateId }: EditYearTemplatePag
 
             if (data.success && data.template) {
                 setTemplate(data.template);
+                setCursus(data.template.cursus || "");
+                setFiliere(data.template.filiere || "");
+                setGroupe(data.template.groupe || "");
+                setAcademicYear(data.template.academicYear || "");
+                setBranches(data.template.branches || []);
 
                 // Check which semesters are defined
                 const s1 = data.template.semesters.find((s: SemesterData) => s.semester === 1);
@@ -112,7 +125,7 @@ export default function EditYearTemplatePage({ templateId }: EditYearTemplatePag
 
     const updateUES1 = (index: number, field: keyof UE, value: string | number | boolean | null | ModuleType[]) => {
         const updated = [...uesS1];
-        updated[index] = { ...updated[index], [field]: value };
+        updated[index] = {...updated[index], [field]: value};
         setUesS1(updated);
     };
 
@@ -136,7 +149,7 @@ export default function EditYearTemplatePage({ templateId }: EditYearTemplatePag
 
     const updateUES2 = (index: number, field: keyof UE, value: string | number | boolean | null | ModuleType[]) => {
         const updated = [...uesS2];
-        updated[index] = { ...updated[index], [field]: value };
+        updated[index] = {...updated[index], [field]: value};
         setUesS2(updated);
     };
 
@@ -250,12 +263,26 @@ export default function EditYearTemplatePage({ templateId }: EditYearTemplatePag
         }
     };
 
+    // Branches management
+    const addBranch = () => {
+        if (newBranch.trim() && !branches.includes(newBranch.trim())) {
+            setBranches([...branches, newBranch.trim()]);
+            setNewBranch("");
+        }
+    };
+    const removeBranch = (index: number) => {
+        setBranches(branches.filter((_, i) => i !== index));
+    };
+
     const handleUpdateTemplate = async () => {
         if (!defineS1 && !defineS2) {
             alert("Veuillez définir au moins un semestre (S1 ou S2)");
             return;
         }
-
+        if (!cursus || !filiere || !groupe || !academicYear) {
+            alert("Cursus, Filière, Groupe et Année sont requis");
+            return;
+        }
         const semesters: SemesterData[] = [];
 
         // Build S1 if defined
@@ -332,22 +359,34 @@ export default function EditYearTemplatePage({ templateId }: EditYearTemplatePag
             });
         }
 
+        // Construction de l'objet templateData complet
+        const templateData = {
+            _id: templateId,
+            cursus,
+            filiere,
+            groupe,
+            academicYear,
+            branches,
+            semesters,
+            name: template?.name || "",
+            code: template?.code || "",
+            version: template?.version || 1,
+            createdAt: template?.createdAt || new Date(),
+            updatedAt: new Date()
+        };
         setSubmitting(true);
 
         try {
             const response = await fetch("/api/admin/year-templates", {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    templateId,
-                    semesters
-                })
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({templateId, templateData})
             });
 
             const data = await response.json();
 
             if (response.ok && data.success) {
-                alert(`✅ Template mis à jour ! (Version ${data.template.version})\n\nLes utilisateurs seront synchronisés automatiquement.`);
+                alert(`✅ Template mis à jour ! (Version ${data.template.version})`);
                 router.push("/admin/year-templates");
             } else {
                 alert(`❌ Erreur : ${data.error}`);
@@ -423,7 +462,7 @@ export default function EditYearTemplatePage({ templateId }: EditYearTemplatePag
                     </div>
                     {isDefined && (
                         <Button onClick={addUE}>
-                            <Plus className="h-4 w-4 mr-2" />
+                            <Plus className="h-4 w-4 mr-2"/>
                             Ajouter UE
                         </Button>
                     )}
@@ -434,7 +473,7 @@ export default function EditYearTemplatePage({ templateId }: EditYearTemplatePag
                 <CardContent>
                     {ues.length === 0 ? (
                         <div className="text-center py-8 border-2 border-dashed rounded-lg">
-                            <AlertCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                            <AlertCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground"/>
                             <p className="text-muted-foreground mb-4">
                                 Aucune UE. Cliquez sur &quot;Ajouter UE&quot; pour commencer.
                             </p>
@@ -464,7 +503,7 @@ export default function EditYearTemplatePage({ templateId }: EditYearTemplatePag
                                                         removeUE(ueIndex);
                                                     }}
                                                 >
-                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                    <Trash2 className="h-4 w-4 text-destructive"/>
                                                 </Button>
                                             </div>
                                         </AccordionTrigger>
@@ -519,7 +558,7 @@ export default function EditYearTemplatePage({ templateId }: EditYearTemplatePag
                                                             variant="outline"
                                                             onClick={() => addModule(semesterNum, ueIndex)}
                                                         >
-                                                            <Plus className="h-4 w-4 mr-2" />
+                                                            <Plus className="h-4 w-4 mr-2"/>
                                                             Ajouter module
                                                         </Button>
                                                     </div>
@@ -543,7 +582,7 @@ export default function EditYearTemplatePage({ templateId }: EditYearTemplatePag
                                                                                 size="icon"
                                                                                 onClick={() => removeModule(semesterNum, ueIndex, modIndex)}
                                                                             >
-                                                                                <X className="h-4 w-4" />
+                                                                                <X className="h-4 w-4"/>
                                                                             </Button>
                                                                         </div>
 
@@ -586,7 +625,7 @@ export default function EditYearTemplatePage({ templateId }: EditYearTemplatePag
                                                                                     variant="ghost"
                                                                                     onClick={() => addGrade(semesterNum, ueIndex, modIndex)}
                                                                                 >
-                                                                                    <Plus className="h-3 w-3 mr-1" />
+                                                                                    <Plus className="h-3 w-3 mr-1"/>
                                                                                     Ajouter
                                                                                 </Button>
                                                                             </div>
@@ -605,7 +644,7 @@ export default function EditYearTemplatePage({ templateId }: EditYearTemplatePag
                                                                                                     onValueChange={(val) => updateGrade(semesterNum, ueIndex, modIndex, gradeIndex, "type", val as GradeType)}
                                                                                                 >
                                                                                                     <SelectTrigger className="h-9">
-                                                                                                        <SelectValue />
+                                                                                                        <SelectValue/>
                                                                                                     </SelectTrigger>
                                                                                                     <SelectContent>
                                                                                                         {GRADE_TYPES.map(gt => (
@@ -653,7 +692,7 @@ export default function EditYearTemplatePage({ templateId }: EditYearTemplatePag
                                                                                                     className="h-9 w-9"
                                                                                                     onClick={() => removeGrade(semesterNum, ueIndex, modIndex, gradeIndex)}
                                                                                                 >
-                                                                                                    <X className="h-4 w-4" />
+                                                                                                    <X className="h-4 w-4"/>
                                                                                                 </Button>
                                                                                             </div>
                                                                                         </div>
@@ -683,7 +722,7 @@ export default function EditYearTemplatePage({ templateId }: EditYearTemplatePag
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center">
-                    <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
+                    <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary"/>
                     <p className="text-muted-foreground">Chargement du template...</p>
                 </div>
             </div>
@@ -702,11 +741,11 @@ export default function EditYearTemplatePage({ templateId }: EditYearTemplatePag
                     <div className="flex items-center gap-3 mb-4">
                         <Link href="/admin/year-templates">
                             <Button variant="ghost" size="icon">
-                                <ArrowLeft className="h-5 w-5" />
+                                <ArrowLeft className="h-5 w-5"/>
                             </Button>
                         </Link>
                         <div className="flex items-center gap-3">
-                            <Shield className="h-8 w-8 text-primary" />
+                            <Shield className="h-8 w-8 text-primary"/>
                             <div>
                                 <h1 className="text-4xl font-bold">Modifier le Template</h1>
                                 <p className="text-muted-foreground">
@@ -718,7 +757,7 @@ export default function EditYearTemplatePage({ templateId }: EditYearTemplatePag
 
                     {/* Alert about synchronization */}
                     <Alert className="mb-6">
-                        <RefreshCw className="h-4 w-4" />
+                        <RefreshCw className="h-4 w-4"/>
                         <AlertTitle>Synchronisation automatique</AlertTitle>
                         <AlertDescription>
                             Quand vous modifiez ce template, les changements seront automatiquement appliqués
@@ -728,7 +767,7 @@ export default function EditYearTemplatePage({ templateId }: EditYearTemplatePag
                 </div>
 
                 <div className="space-y-6">
-                    {/* Template Info (read-only) */}
+                    {/* Editable Template Info */}
                     <Card className="border-2">
                         <CardHeader>
                             <CardTitle>Informations du template</CardTitle>
@@ -736,20 +775,39 @@ export default function EditYearTemplatePage({ templateId }: EditYearTemplatePag
                         <CardContent>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <div>
-                                    <Label className="text-sm text-muted-foreground">Cursus</Label>
-                                    <p className="font-medium">{template.cursus}</p>
+                                    <Label className="text-sm">Cursus *</Label>
+                                    <Input value={cursus} onChange={e => setCursus(e.target.value.toUpperCase())} placeholder="PGE, PEX..."/>
                                 </div>
                                 <div>
-                                    <Label className="text-sm text-muted-foreground">Filière</Label>
-                                    <p className="font-medium">{template.filiere}</p>
+                                    <Label className="text-sm">Filière *</Label>
+                                    <Input value={filiere} onChange={e => setFiliere(e.target.value.toUpperCase())} placeholder="P1, L3, M1..."/>
                                 </div>
                                 <div>
-                                    <Label className="text-sm text-muted-foreground">Groupe</Label>
-                                    <p className="font-medium">{template.groupe}</p>
+                                    <Label className="text-sm">Groupe *</Label>
+                                    <Input value={groupe} onChange={e => setGroupe(e.target.value.toUpperCase())} placeholder="PLUS, PMP..."/>
                                 </div>
                                 <div>
-                                    <Label className="text-sm text-muted-foreground">Année</Label>
-                                    <p className="font-medium">{template.academicYear}</p>
+                                    <Label className="text-sm">Année *</Label>
+                                    <Input value={academicYear} onChange={e => setAcademicYear(e.target.value)} placeholder="2025-2026"/>
+                                </div>
+                            </div>
+                            <div className="mt-4">
+                                <Label className="text-sm">Branches (optionnel)</Label>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                    {branches.map((branch, index) => (
+                                        <Badge key={index} variant="secondary" className="flex items-center gap-2">
+                                            {branch}
+                                            <Button className={"cursor-pointer"} type="button" size="sm" variant="ghost" onClick={() => removeBranch(index)}>
+                                                <X className="h-3 w-3"/>
+                                            </Button>
+                                        </Badge>
+                                    ))}
+                                </div>
+                                <div className="flex gap-2 mt-2">
+                                    <Input value={newBranch} onChange={e => setNewBranch(e.target.value)} placeholder="Ajouter une branche..."/>
+                                    <Button type="button" onClick={addBranch}>
+                                        <Plus className="h-4 w-4"/>
+                                    </Button>
                                 </div>
                             </div>
                         </CardContent>
@@ -766,7 +824,7 @@ export default function EditYearTemplatePage({ templateId }: EditYearTemplatePag
                         <div className="flex gap-2">
                             <Link href="/admin/year-templates">
                                 <Button variant="outline" size="lg">
-                                    <ArrowLeft className="mr-2 h-5 w-5" />
+                                    <ArrowLeft className="mr-2 h-5 w-5"/>
                                     Annuler
                                 </Button>
                             </Link>
@@ -778,12 +836,12 @@ export default function EditYearTemplatePage({ templateId }: EditYearTemplatePag
                             >
                                 {syncing ? (
                                     <>
-                                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                        <Loader2 className="mr-2 h-5 w-5 animate-spin"/>
                                         Synchronisation...
                                     </>
                                 ) : (
                                     <>
-                                        <RefreshCw className="mr-2 h-5 w-5" />
+                                        <RefreshCw className="mr-2 h-5 w-5"/>
                                         Sync utilisateurs
                                     </>
                                 )}
@@ -796,12 +854,12 @@ export default function EditYearTemplatePage({ templateId }: EditYearTemplatePag
                         >
                             {submitting ? (
                                 <>
-                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                    <Loader2 className="mr-2 h-5 w-5 animate-spin"/>
                                     Mise à jour en cours...
                                 </>
                             ) : (
                                 <>
-                                    <Save className="mr-2 h-5 w-5" />
+                                    <Save className="mr-2 h-5 w-5"/>
                                     Enregistrer les modifications
                                 </>
                             )}

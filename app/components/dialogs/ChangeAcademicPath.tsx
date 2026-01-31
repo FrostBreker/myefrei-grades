@@ -8,6 +8,7 @@ import {AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, A
 import {AcademicPath} from "@lib/grades/types";
 import {TemplateOption} from "@components/client_types/templates";
 import {loadAvailableTemplates} from "@components/client_functions/templates";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
 type ChangeAcademicPathProps = {
@@ -21,6 +22,7 @@ function ChangeAcademicPath({disabled, activePath, refreshData}: ChangeAcademicP
     const [confirmChangeDialogOpen, setConfirmChangeDialogOpen] = useState(false);
     const [changingPath, setChangingPath] = useState(false);
     const [selectedChangeOption, setSelectedChangeOption] = useState<TemplateOption | null>(null);
+    const [selectedBranch, setSelectedBranch] = useState<string>("");
 
     const [templateOptions, setTemplateOptions] = useState<TemplateOption[]>([]);
     const [loadingTemplates, setLoadingTemplates] = useState(false);
@@ -31,10 +33,15 @@ function ChangeAcademicPath({disabled, activePath, refreshData}: ChangeAcademicP
         }
     }, [changePathDialogOpen, disabled]);
 
+    useEffect(() => {
+        // Reset branch when option changes
+        setSelectedBranch("");
+    }, [selectedChangeOption]);
+
 
     const handleChangePath = async () => {
         if (!selectedChangeOption || !activePath) return;
-
+        if ((selectedChangeOption.branches && selectedChangeOption.branches.length > 0) && !selectedBranch) return;
         setChangingPath(true);
         try {
             // 1. Delete the current active path
@@ -58,6 +65,7 @@ function ChangeAcademicPath({disabled, activePath, refreshData}: ChangeAcademicP
                     cursus: selectedChangeOption.cursus,
                     filiere: selectedChangeOption.filiere,
                     groupe: selectedChangeOption.groupe,
+                    branch: selectedChangeOption.branches && selectedChangeOption.branches.length > 0 ? selectedBranch : undefined,
                     academicYear: selectedChangeOption.academicYear !== "Non spécifié" ? selectedChangeOption.academicYear : undefined,
                     setAsActive: true
                 })
@@ -70,6 +78,7 @@ function ChangeAcademicPath({disabled, activePath, refreshData}: ChangeAcademicP
                 setChangePathDialogOpen(false);
                 setConfirmChangeDialogOpen(false);
                 setSelectedChangeOption(null);
+                setSelectedBranch("");
                 refreshData();
             } else {
                 alert(`❌ Erreur lors de l'ajout : ${addData.error}`);
@@ -169,6 +178,20 @@ function ChangeAcademicPath({disabled, activePath, refreshData}: ChangeAcademicP
                                                                 <p className="text-sm text-muted-foreground">
                                                                     Année : {option.academicYear}
                                                                 </p>
+                                                                {option.branches && option.branches.length > 0 && selectedChangeOption === option && (
+                                                                    <div className="mt-2">
+                                                                        <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                                                                            <SelectTrigger className="w-full cursor-pointer">
+                                                                                <SelectValue placeholder="Choisis ton groupe" />
+                                                                            </SelectTrigger>
+                                                                            <SelectContent>
+                                                                                {option.branches.map((branch) => (
+                                                                                    <SelectItem className={"cursor-pointer"} key={branch} value={branch}>{branch}</SelectItem>
+                                                                                ))}
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    </div>
+                                                                )}
                                                                 <div className="flex gap-2 mt-2">
                                                                     {option.hasS1 ? (
                                                                         <Badge className="bg-green-500 text-xs">S1 ✓</Badge>
@@ -204,7 +227,7 @@ function ChangeAcademicPath({disabled, activePath, refreshData}: ChangeAcademicP
                                     </Button>
                                     <Button
                                         onClick={() => setConfirmChangeDialogOpen(true)}
-                                        disabled={!selectedChangeOption}
+                                        disabled={!selectedChangeOption || (selectedChangeOption && selectedChangeOption.branches && selectedChangeOption.branches.length > 0 && !selectedBranch)}
                                         variant="destructive"
                                         className="flex-1 cursor-pointer"
                                     >

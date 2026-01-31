@@ -6,7 +6,7 @@ import {
     setActivePath,
     removeAcademicPath
 } from "@lib/grades/profileService";
-import {AcademicPath, Cursus, Filiere, Groupe} from "@lib/grades/types";
+import {AcademicPath, Branch, Cursus, Filiere, Groupe} from "@lib/grades/types";
 import {requestAuthCheck} from "@lib/api/request_check";
 
 /**
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
         const session = await requestAuthCheck();
         if (!session || !session?.user) return;
 
-        const {cursus, filiere, groupe, academicYear, setAsActive} = await request.json();
+        const {cursus, filiere, groupe, branch, academicYear, setAsActive} = await request.json();
 
         if (!cursus || !filiere || !groupe) {
             return NextResponse.json(
@@ -90,6 +90,7 @@ export async function POST(request: Request) {
             cursus as Cursus,
             filiere as Filiere,
             groupe as Groupe,
+            branch as Branch,
             academicYear,
             setAsActive,
             session.user.email
