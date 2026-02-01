@@ -6,7 +6,7 @@ import StatisticsPage from "@/app/components/pages/StatisticsPage";
 import clientPromise from "@lib/mongodb";
 import { getAcademicProfile } from "@lib/grades/profileService";
 import { getUserSemesters } from "@lib/grades/semesterService";
-import { UserSemester, AcademicProfile } from "@lib/grades/types";
+import {checkIfProfileComplete} from "@lib/user/checkIfProfileComplete";
 
 export const metadata: Metadata = {
     title: "Statistiques - MyEFREI Grades",
@@ -30,7 +30,8 @@ export default async function Statistics() {
     }
 
     // Check if user has completed onboarding (has personal info)
-    if (!user.firstName || !user.lastName || !user.studentNumber) {
+    const isProfileComplete = checkIfProfileComplete(user);
+    if (!isProfileComplete) {
         redirect("/onboarding");
     }
 

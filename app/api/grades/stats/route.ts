@@ -1,153 +1,9 @@
-import { NextResponse } from "next/server";
+import {NextResponse} from "next/server";
 import clientPromise from "@lib/mongodb";
-import { ObjectId } from "mongodb";
-import { UserSemesterDB } from "@lib/grades/types";
+import { ObjectId} from "mongodb";
+import {UserSemesterDB} from "@lib/grades/types";
 import {requestAuthCheck} from "@lib/api/request_check";
-
-interface StatsResult {
-    groupe: GroupStats;
-    filiere: GroupStats;
-    cursus: GroupStats;
-}
-
-interface GroupStats {
-    name: string;
-    totalUsers: number;
-    averages: {
-        global: AverageStats;
-        byUE: UEStats[];
-    };
-}
-
-interface AverageStats {
-    average: number | null;
-    rank: number | null;
-    totalWithGrades: number;
-    min: number | null;
-    max: number | null;
-    median: number | null;
-}
-
-interface UEStats {
-    ueId: string;
-    ueCode: string;
-    ueName: string;
-    stats: AverageStats;
-    modules: ModuleStats[];
-}
-
-interface ModuleStats {
-    moduleId: string;
-    moduleCode: string;
-    moduleName: string;
-    stats: AverageStats;
-}
-
-// Calculate statistics from an array of averages
-function calculateStats(averages: (number | null)[], userAverage: number | null): AverageStats {
-    const validAverages = averages.filter((a): a is number => a !== null).sort((a, b) => b - a);
-
-    if (validAverages.length === 0) {
-        return {
-            average: null,
-            rank: null,
-            totalWithGrades: 0,
-            min: null,
-            max: null,
-            median: null
-        };
-    }
-
-    const sum = validAverages.reduce((acc, val) => acc + val, 0);
-    const avg = Math.round((sum / validAverages.length) * 100) / 100;
-
-    let rank: number | null = null;
-    if (userAverage !== null) {
-        rank = validAverages.findIndex(a => userAverage >= a) + 1;
-        if (rank === 0) rank = validAverages.length;
-    }
-
-    const medianIndex = Math.floor(validAverages.length / 2);
-    const median = validAverages.length % 2 === 0
-        ? (validAverages[medianIndex - 1] + validAverages[medianIndex]) / 2
-        : validAverages[medianIndex];
-
-    return {
-        average: avg,
-        rank,
-        totalWithGrades: validAverages.length,
-        min: validAverages[validAverages.length - 1],
-        max: validAverages[0],
-        median: Math.round(median * 100) / 100
-    };
-}
-
-// Calculate UE average from modules
-function calculateUEAverage(modules: { average?: number | null }[]): number | null {
-    const validModules = modules.filter(m => m.average !== null && m.average !== undefined);
-    if (validModules.length === 0) return null;
-
-    const sum = validModules.reduce((acc, m) => acc + (m.average || 0), 0);
-    return Math.round((sum / validModules.length) * 100) / 100;
-}
-
-// Normalize module code by removing group-specific suffixes
-// SM102PM-2526PSA01 -> SM102-2526PSA01
-// SM102I-2526PSA01 -> SM102-2526PSA01
-// SM102-2526PSA01 -> SM102-2526PSA01 (unchanged)
-function normalizeModuleCode(code: string): string {
-    // Pattern: extract base code before the dash, remove known suffixes
-    const dashIndex = code.indexOf('-');
-    if (dashIndex === -1) return code;
-
-    const beforeDash = code.substring(0, dashIndex);
-    const afterDash = code.substring(dashIndex);
-
-    // Remove known suffixes: PM, I, P (but not if it's part of the base code)
-    // We check from the end to avoid removing letters that are part of the code
-    const suffixes = ['PM', 'I', 'P'];
-    let normalized = beforeDash;
-
-    for (const suffix of suffixes) {
-        if (normalized.endsWith(suffix)) {
-            // Check if removing this suffix leaves a valid code
-            const withoutSuffix = normalized.substring(0, normalized.length - suffix.length);
-            // Only remove if there's still content left (avoid edge cases)
-            if (withoutSuffix.length > 0) {
-                normalized = withoutSuffix;
-                break;
-            }
-        }
-    }
-
-    return normalized + afterDash;
-}
-
-// Normalize UE code by removing group-specific suffixes
-// UE11P -> UE11
-// UE13P -> UE13
-// UE11 -> UE11 (unchanged)
-function normalizeUECode(code: string): string {
-    const suffixes = ['PM', 'I', 'P'];
-    let normalized = code;
-
-    for (const suffix of suffixes) {
-        if (normalized.endsWith(suffix)) {
-            const withoutSuffix = normalized.substring(0, normalized.length - suffix.length);
-            if (withoutSuffix.length > 0) {
-                normalized = withoutSuffix;
-                break;
-            }
-        }
-    }
-
-    return normalized;
-}
-
-// Check if a module code matches a normalized code
-// function moduleCodesMatch(code1: string, code2: string): boolean {
-//     return normalizeModuleCode(code1) === normalizeModuleCode(code2);
-// }
+import {calculateBranchRankingsForGroup, calculateFiliereRankings, calculateGroupeRankings, calculateGroupeRankingsForSpe, calculateLevelStats, calculateUEAverage} from "@lib/stats/group_rankings";
 
 export async function GET(request: Request) {
     try {
@@ -190,36 +46,6 @@ export async function GET(request: Request) {
             );
         }
 
-        // Get all semesters for the same groupe (most specific)
-        const groupeSemesters = await db.collection<UserSemesterDB>('userSemesters')
-            .find({
-                cursus: userSemester.cursus,
-                filiere: userSemester.filiere,
-                groupe: userSemester.groupe,
-                academicYear: userSemester.academicYear,
-                semester: userSemester.semester
-            })
-            .toArray();
-
-        // Get all semesters for the same filiere
-        const filiereSemesters = await db.collection<UserSemesterDB>('userSemesters')
-            .find({
-                cursus: userSemester.cursus,
-                filiere: userSemester.filiere,
-                academicYear: userSemester.academicYear,
-                semester: userSemester.semester
-            })
-            .toArray();
-
-        // Get all semesters for the same cursus
-        const cursusSemesters = await db.collection<UserSemesterDB>('userSemesters')
-            .find({
-                cursus: userSemester.cursus,
-                academicYear: userSemester.academicYear,
-                semester: userSemester.semester
-            })
-            .toArray();
-
         // Calculate user's averages
         const userGlobalAvg = userSemester.average;
         const userUEAverages = userSemester.ues.map(ue => ({
@@ -235,198 +61,156 @@ export async function GET(request: Request) {
             }))
         }));
 
-        // Get user's module IDs for filtering
-        // const userModuleIds = new Set(
-        //     userSemester.ues.flatMap(ue => ue.modules.map(m => m.id))
-        // );
+        const stats: StatsData = {} as StatsData;
 
-        // Helper function to calculate stats for a group of semesters
-        const calculateGroupStats = (
-            semesters: UserSemesterDB[],
-            groupName: string,
-            shouldMergeModules: boolean
-        ): GroupStats => {
-            // Global averages
-            const globalAverages = semesters.map(s => s.average);
+        // 1. GROUP stats (based on branch field)
+        // TODO: Come back to this - some users don't have branch because they are on PLUS spe
+        // which doesn't have groups (they are alone). For now, we show no stats if branch is null/empty.
+        // Later we might want to handle PLUS spe differently.
+        const hasBranch = userSemester.branch && userSemester.branch.trim() !== '';
 
-            if (shouldMergeModules) {
-                // For filiere and cursus: merge UEs with same normalized code
-                const mergedUEMap = new Map<string, {
-                    ueIds: Set<string>;
-                    code: string;
-                    name: string;
-                    averages: (number | null)[];
-                    modules: Map<string, {
-                        id: string;
-                        code: string;
-                        name: string;
-                        averages: (number | null)[];
-                        normalizedCode: string;
-                    }>;
-                }>();
+        // For users without branch, use groupe as effective branch
+        const effectiveBranch = hasBranch ? userSemester.branch : userSemester.groupe;
 
-                // First pass: collect all UEs and modules by normalized UE code
-                for (const sem of semesters) {
-                    for (const ue of sem.ues) {
-                        const normalizedUECode = normalizeUECode(ue.code);
-
-                        if (!mergedUEMap.has(normalizedUECode)) {
-                            mergedUEMap.set(normalizedUECode, {
-                                ueIds: new Set(),
-                                code: normalizedUECode,
-                                name: ue.name,
-                                averages: [],
-                                modules: new Map()
-                            });
+        if (hasBranch || userSemester.groupe) {
+            // Find all semesters with the same effective branch
+            const branchSemesters = await db.collection<UserSemesterDB>('userSemesters')
+                .find({
+                    academicYear: userSemester.academicYear,
+                    semester: userSemester.semester,
+                    groupe: userSemester.groupe,
+                    $or: [
+                        { branch: effectiveBranch },
+                        {
+                            $and: [
+                                {
+                                    $or: [
+                                        { branch: { $exists: false } },
+                                        { branch: null as never },
+                                        { branch: "" }
+                                    ]
+                                },
+                                { groupe: effectiveBranch }
+                            ]
                         }
+                    ]
+                })
+                .toArray();
 
-                        const mergedUE = mergedUEMap.get(normalizedUECode)!;
-                        mergedUE.ueIds.add(ue.id);
+            stats.group = {
+                ...calculateLevelStats(
+                    branchSemesters,
+                    effectiveBranch,
+                    userGlobalAvg,
+                    userUEAverages,
+                    false, // No normalization for branch level
+                    true   // Include modules
+                ),
+                ranking: await calculateBranchRankingsForGroup(
+                    db,
+                    userSemester.academicYear,
+                    userSemester.semester,
+                    userSemester.groupe // Only branches within this groupe
+                )
+            };
+        } else {
+            // No branch and no groupe - return empty stats
+            stats.group = {
+                name: "N/A",
+                totalUsers: 0,
+                averages: {
+                    global: {
+                        average: null,
+                        rank: null,
+                        totalWithGrades: 0,
+                        min: null,
+                        max: null,
+                        median: null
+                    },
+                    byUE: []
+                },
+                ranking: []
+            };
+        }
 
-                        const ueAvg = ue.average ?? calculateUEAverage(ue.modules);
-                        mergedUE.averages.push(ueAvg);
+        // 2. SPE stats (based on groupe field)
+        const groupeSemesters = await db.collection<UserSemesterDB>('userSemesters')
+            .find({
+                academicYear: userSemester.academicYear,
+                semester: userSemester.semester,
+                groupe: userSemester.groupe
+            })
+            .toArray();
 
-                        // Collect modules
-                        for (const mod of ue.modules) {
-                            const normalizedModCode = normalizeModuleCode(mod.code);
-
-                            if (!mergedUE.modules.has(normalizedModCode)) {
-                                mergedUE.modules.set(normalizedModCode, {
-                                    id: mod.id,
-                                    code: mod.code,
-                                    name: mod.name,
-                                    averages: [],
-                                    normalizedCode: normalizedModCode
-                                });
-                            }
-                            mergedUE.modules.get(normalizedModCode)!.averages.push(mod.average ?? null);
-                        }
-                    }
-                }
-
-                // Second pass: filter to only user's UEs and build stats
-                const byUE: UEStats[] = [];
-
-                for (const userUE of userUEAverages) {
-                    const normalizedUECode = normalizeUECode(userUE.code);
-                    const mergedUE = mergedUEMap.get(normalizedUECode);
-
-                    if (!mergedUE) continue; // Skip if UE not found
-
-                    // Build module stats - only for modules user has
-                    const moduleStats: ModuleStats[] = [];
-
-                    for (const userMod of userUE.modules) {
-                        const normalizedModCode = normalizeModuleCode(userMod.code);
-                        const mergedMod = mergedUE.modules.get(normalizedModCode);
-
-                        if (mergedMod) {
-                            moduleStats.push({
-                                moduleId: userMod.id,
-                                moduleCode: userMod.code, // Use user's code
-                                moduleName: userMod.name,
-                                stats: calculateStats(mergedMod.averages, userMod.average)
-                            });
-                        }
-                    }
-
-                    byUE.push({
-                        ueId: userUE.id,
-                        ueCode: userUE.code, // Use user's UE code
-                        ueName: userUE.name,
-                        stats: calculateStats(mergedUE.averages, userUE.average),
-                        modules: moduleStats
-                    });
-                }
-
-                return {
-                    name: groupName,
-                    totalUsers: semesters.length,
-                    averages: {
-                        global: calculateStats(globalAverages, userGlobalAvg),
-                        byUE
-                    }
-                };
-
-            } else {
-                // Original logic for groupe (no merging)
-                const ueStatsMap = new Map<string, {
-                    code: string;
-                    name: string;
-                    averages: (number | null)[];
-                    modules: Map<string, { code: string; name: string; averages: (number | null)[] }>
-                }>();
-
-                // Collect all UE and module averages
-                for (const sem of semesters) {
-                    for (const ue of sem.ues) {
-                        if (!ueStatsMap.has(ue.id)) {
-                            ueStatsMap.set(ue.id, {
-                                code: ue.code,
-                                name: ue.name,
-                                averages: [],
-                                modules: new Map()
-                            });
-                        }
-                        const ueData = ueStatsMap.get(ue.id)!;
-                        const ueAvg = ue.average ?? calculateUEAverage(ue.modules);
-                        ueData.averages.push(ueAvg);
-
-                        for (const mod of ue.modules) {
-                            if (!ueData.modules.has(mod.id)) {
-                                ueData.modules.set(mod.id, {
-                                    code: mod.code,
-                                    name: mod.name,
-                                    averages: []
-                                });
-                            }
-                            ueData.modules.get(mod.id)!.averages.push(mod.average ?? null);
-                        }
-                    }
-                }
-
-                // Build UE stats with user's rank
-                const byUE: UEStats[] = [];
-                for (const [ueId, ueData] of ueStatsMap) {
-                    const userUE = userUEAverages.find(u => u.id === ueId);
-                    const userUEAvg = userUE?.average ?? null;
-
-                    const moduleStats: ModuleStats[] = [];
-                    for (const [modId, modData] of ueData.modules) {
-                        const userMod = userUE?.modules.find(m => m.id === modId);
-                        moduleStats.push({
-                            moduleId: modId,
-                            moduleCode: modData.code,
-                            moduleName: modData.name,
-                            stats: calculateStats(modData.averages, userMod?.average ?? null)
-                        });
-                    }
-
-                    byUE.push({
-                        ueId,
-                        ueCode: ueData.code,
-                        ueName: ueData.name,
-                        stats: calculateStats(ueData.averages, userUEAvg),
-                        modules: moduleStats
-                    });
-                }
-
-                return {
-                    name: groupName,
-                    totalUsers: semesters.length,
-                    averages: {
-                        global: calculateStats(globalAverages, userGlobalAvg),
-                        byUE
-                    }
-                };
-            }
+        stats.spe = {
+            ...calculateLevelStats(
+                groupeSemesters,
+                userSemester.groupe,
+                userGlobalAvg,
+                userUEAverages,
+                false, // No normalization for groupe level
+                true   // Include modules
+            ),
+            // SPE rankings show ALL groupes/branches across the filiere
+            // If branch exists, it's ranked by branch name; if not, by groupe name
+            ranking: await calculateGroupeRankingsForSpe(
+                db,
+                userSemester.academicYear,
+                userSemester.semester,
+                userSemester.filiere // Use filiere to get ALL groupes (INT1, MARK1, CLASSIQUE, PMP, etc.)
+            )
         };
 
-        // Calculate stats for each level
-        const stats: StatsResult = {
-            groupe: calculateGroupStats(groupeSemesters, userSemester.groupe, false),
-            filiere: calculateGroupStats(filiereSemesters, userSemester.filiere, true),
-            cursus: calculateGroupStats(cursusSemesters, userSemester.cursus, true)
+        // 3. FILIERE stats (based on filiere field) - with normalization
+        const filiereSemesters = await db.collection<UserSemesterDB>('userSemesters')
+            .find({
+                academicYear: userSemester.academicYear,
+                semester: userSemester.semester,
+                filiere: userSemester.filiere
+            })
+            .toArray();
+
+        stats.filiere = {
+            ...calculateLevelStats(
+                filiereSemesters,
+                userSemester.filiere,
+                userGlobalAvg,
+                userUEAverages,
+                true, // Normalize codes for filiere level
+                true  // Include modules
+            ),
+            ranking: await calculateGroupeRankings(
+                db,
+                userSemester.academicYear,
+                userSemester.semester,
+                userSemester.filiere
+            )
+        };
+
+        // 4. CURSUS stats (based on cursus field) - with normalization, NO MODULES
+        const cursusSemesters = await db.collection<UserSemesterDB>('userSemesters')
+            .find({
+                academicYear: userSemester.academicYear,
+                semester: userSemester.semester,
+                cursus: userSemester.cursus
+            })
+            .toArray();
+
+        stats.cursus = {
+            ...calculateLevelStats(
+                cursusSemesters,
+                userSemester.cursus,
+                userGlobalAvg,
+                userUEAverages,
+                true,  // Normalize codes for cursus level
+                false  // NO modules for cursus
+            ),
+            ranking: await calculateFiliereRankings(
+                db,
+                userSemester.academicYear,
+                userSemester.semester,
+                userSemester.cursus
+            )
         };
 
         return NextResponse.json({

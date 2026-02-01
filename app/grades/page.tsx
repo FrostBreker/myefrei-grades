@@ -6,6 +6,7 @@ import GradesPage from "@components/pages/GradesPage";
 import { getAcademicProfile } from "@lib/grades/profileService";
 import { getUserSemesters } from "@lib/grades/semesterService";
 import clientPromise from "@lib/mongodb";
+import {checkIfProfileComplete} from "@lib/user/checkIfProfileComplete";
 
 export const metadata: Metadata = {
     title: "Mes Notes - MyEFREI Grades",
@@ -29,7 +30,8 @@ export default async function Grades() {
     }
 
     // Check if user has completed onboarding (has personal info)
-    if (!user.firstName || !user.lastName || !user.studentNumber) {
+    const isProfileComplete = checkIfProfileComplete(user);
+    if (!isProfileComplete) {
         redirect("/onboarding");
     }
 

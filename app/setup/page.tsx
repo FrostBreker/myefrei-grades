@@ -5,6 +5,7 @@ import { Metadata } from "next";
 import SetupPage from "@/app/components/pages/SetupPage";
 import { getAcademicProfile } from "@lib/grades/profileService";
 import clientPromise from "@lib/mongodb";
+import {checkIfProfileComplete} from "@lib/user/checkIfProfileComplete";
 
 export const metadata: Metadata = {
     title: "Configuration - MyEFREI Grades",
@@ -28,7 +29,8 @@ export default async function Setup() {
     }
 
     // Check if user has completed onboarding (has personal info)
-    if (!user.firstName || !user.lastName || !user.studentNumber) {
+    const isProfileComplete = checkIfProfileComplete(user);
+    if (!isProfileComplete) {
         redirect("/onboarding");
     }
 
