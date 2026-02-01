@@ -58,6 +58,8 @@ NEXTAUTH_SECRET="" // Add a strong secret for NextAuth here
 ENABLE_NEW_RELIC="false" // Set to "true" to enable New Relic monitoring
 NEW_RELIC_APP_NAME="myEfreiGrades-Dev" // Set your New Relic application name
 NEW_RELIC_LICENSE_KEY="YOUR_NEW_RELIC_LICENSE_KEY" // Add your New Relic license key here
+
+RESEND_API_KEY="" // Add your Resend API key here
 ```
 
 ## Structure du Projet

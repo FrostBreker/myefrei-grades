@@ -2,18 +2,17 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
-import SettingsPage from "@/app/components/pages/SettingsPage";
+import VerifyEmailPage from "@/app/components/pages/VerifyEmailPage";
 import clientPromise from "@lib/mongodb";
-import {checkIfProfileComplete} from "@lib/user/checkIfProfileComplete";
-import {checkIfEmailVerified} from "@lib/user/checkIfEmailVerified";
-import {UserDB} from "@lib/user/types";
+import { checkIfProfileComplete } from "@lib/user/checkIfProfileComplete";
+import { checkIfEmailVerified } from "@lib/user/checkIfEmailVerified";
 
 export const metadata: Metadata = {
-    title: "Paramètres - MyEFREI Grades",
-    description: "Gère tes préférences et ton compte",
+    title: "Vérification Email - MyEFREI Grades",
+    description: "Vérifie ton adresse email EFREI",
 };
 
-export default async function Settings() {
+export default async function VerifyEmail() {
     const session = await getServerSession(authOptions);
 
     if (!session || !session.user?.email) {
@@ -29,19 +28,17 @@ export default async function Settings() {
         redirect("/");
     }
 
-    const newUser: UserDB = JSON.parse(JSON.stringify(user));
-
-    // Check if user has completed onboarding (has personal info)
+    // Check if user has completed onboarding (has personal info) first
     const isProfileComplete = checkIfProfileComplete(user);
     if (!isProfileComplete) {
         redirect("/onboarding");
     }
 
-    // Check if user has verified their EFREI email
+    // If already verified, redirect to setup or grades
     const isEmailVerified = checkIfEmailVerified(user);
-    if (!isEmailVerified) {
-        redirect("/verify-email");
+    if (isEmailVerified) {
+        redirect("/setup");
     }
 
-    return <SettingsPage user={newUser} />;
+    return <VerifyEmailPage />;
 }

@@ -5,6 +5,11 @@ export interface User {
     name: string;
     email: string;
     emailVerified: boolean;
+    emailEfrei: string;
+    verificationCode?: number | null;
+    verificationCodeExpiry?: Date | null;
+    verificationAttempts?: number | null;
+    lastVerificationSent?: Date | null;
     image: string;
     clientIP: string;
     createdAt: Date;
@@ -20,6 +25,11 @@ export interface UserDB {
     name: string;
     email: string;
     emailVerified: boolean;
+    emailEfrei: string;
+    verificationCode?: number | null;
+    verificationCodeExpiry?: Date | null;
+    verificationAttempts?: number | null;
+    lastVerificationSent?: Date | null;
     image: string;
     clientIP: string;
     createdAt: Date;

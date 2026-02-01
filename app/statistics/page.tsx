@@ -7,6 +7,7 @@ import clientPromise from "@lib/mongodb";
 import { getAcademicProfile } from "@lib/grades/profileService";
 import { getUserSemesters } from "@lib/grades/semesterService";
 import {checkIfProfileComplete} from "@lib/user/checkIfProfileComplete";
+import {checkIfEmailVerified} from "@lib/user/checkIfEmailVerified";
 
 export const metadata: Metadata = {
     title: "Statistiques - MyEFREI Grades",
@@ -33,6 +34,12 @@ export default async function Statistics() {
     const isProfileComplete = checkIfProfileComplete(user);
     if (!isProfileComplete) {
         redirect("/onboarding");
+    }
+
+    // Check if user has verified their EFREI email
+    const isEmailVerified = checkIfEmailVerified(user);
+    if (!isEmailVerified) {
+        redirect("/verify-email");
     }
 
     // Get profile and semesters server-side
