@@ -22,6 +22,7 @@
     "dev:newrelic": "cross-env ENABLE_NEW_RELIC=true next dev",
     "build": "next build",
     "start": "next start",
+    "start:newrelic": "cross-env ENABLE_NEW_RELIC=true next start",
     "lint": "eslint"
   },
   "dependencies": {
