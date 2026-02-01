@@ -56,7 +56,6 @@ NEXTAUTH_SECRET="" // Add a strong secret for NextAuth here
 
 # New Relic Configuration
 ENABLE_NEW_RELIC="false" // Set to "true" to enable New Relic monitoring
-NODE_ENV="development" // Set the environment to "development" or "production"
 NEW_RELIC_APP_NAME="myEfreiGrades-Dev" // Set your New Relic application name
 NEW_RELIC_LICENSE_KEY="YOUR_NEW_RELIC_LICENSE_KEY" // Add your New Relic license key here
 ```
