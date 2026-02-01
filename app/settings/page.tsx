@@ -5,6 +5,7 @@ import { Metadata } from "next";
 import SettingsPage from "@/app/components/pages/SettingsPage";
 import clientPromise from "@lib/mongodb";
 import {checkIfProfileComplete} from "@lib/user/checkIfProfileComplete";
+import {UserDB} from "@lib/user/types";
 
 export const metadata: Metadata = {
     title: "Paramètres - MyEFREI Grades",
@@ -27,11 +28,13 @@ export default async function Settings() {
         redirect("/");
     }
 
+    const newUser: UserDB = JSON.parse(JSON.stringify(user));
+
     // Check if user has completed onboarding (has personal info)
     const isProfileComplete = checkIfProfileComplete(user);
     if (!isProfileComplete) {
         redirect("/onboarding");
     }
 
-    return <SettingsPage userEmail={session.user.email} />;
+    return <SettingsPage user={newUser} />;
 }

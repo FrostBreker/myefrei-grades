@@ -28,16 +28,56 @@ import {
     Loader2
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import {UserDB} from "@lib/user/types";
+import {Switch} from "@/components/ui/switch";
 
 interface SettingsPageProps {
-    userEmail: string;
+    user:UserDB;
 }
 
-export default function SettingsPage({ userEmail }: SettingsPageProps) {
+export default function SettingsPage({ user }: SettingsPageProps) {
     const router = useRouter();
     const { theme, setTheme } = useTheme();
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+
+    const [nameInStats, setNameInStats] = useState(user.nameInStats || false);
+
+    const [edited, setEdited] = useState(false);
+    const [text, setText] = useState("-");
+
+    const handlerChangeNameInStats = async (value: boolean) => {
+        setNameInStats(value);
+        setEdited(true);
+        try {
+            const response = await fetch("/api/user/profile", {
+                method: "PUT",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    studentNumber: user.studentNumber,
+                    nameInStats: value
+                })
+            });
+
+            const data = await response.json();
+            if (response.ok && data.success) {
+                setText("success-Paramètre mis à jour avec succès");
+            } else {
+                setText("error-" + (data.error || "Erreur lors de la mise à jour du profil"));
+            }
+        } catch (error) {
+            console.error("Error saving profile:", error);
+            alert("Erreur lors de la sauvegarde du profil");
+            setText("error-Erreur lors de la mise à jour du profil");
+        } finally {
+            setTimeout(() => {
+                setEdited(false);
+                setText("-");
+            }, 3000);
+        }
+    }
 
     const handleDeleteAccount = async () => {
         setIsDeleting(true);
@@ -139,9 +179,31 @@ export default function SettingsPage({ userEmail }: SettingsPageProps) {
                         <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
                             <div>
                                 <p className="font-medium">Email</p>
-                                <p className="text-sm text-muted-foreground">{userEmail}</p>
+                                <p className="text-sm text-muted-foreground">{user.email}</p>
                             </div>
                             <Badge variant="secondary">Google</Badge>
+                        </div>
+                        <div>
+                            <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                                <div>
+                                    <p className="font-medium">Afficher mon nom dans les statistiques</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        Choisis si tu souhaites que ton nom apparaisse dans les statistiques globales
+                                    </p>
+                                </div>
+                                <div className="flex items-center space-x-3">
+                                    <Switch
+                                        className={"cursor-pointer"}
+                                        checked={nameInStats}
+                                        onCheckedChange={handlerChangeNameInStats}
+                                    />
+                                </div>
+                            </div>
+                            {edited && (
+                                <div className={"mt-2 text-sm" + (text.split("-")[0] === "success" ? " text-green-600" : " text-red-600")}>
+                                    {text.split("-")[1]}
+                                </div>
+                            )}
                         </div>
                         <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
                             <div>

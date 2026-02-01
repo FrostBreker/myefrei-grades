@@ -18,7 +18,6 @@ export default function OnboardingPage() {
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
     const [studentNumber, setStudentNumber] = useState("");
-    const [nameInStats, setNameInStats] = useState(false);
 
 
     // Validation errors
@@ -164,11 +163,6 @@ export default function OnboardingPage() {
         if (studentNumberError) validateStudentNumber(filtered);
     };
 
-    // Gérer le checkbox nameInStats
-    const handleNameInStatsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setNameInStats(e.target.checked);
-    };
-
     // Formater le nom au blur
     const handleFirstNameBlur = () => {
         if (firstName.trim()) {
@@ -195,7 +189,7 @@ export default function OnboardingPage() {
                 const data = await response.json();
 
                 // Si l'utilisateur a déjà toutes ses infos, rediriger vers setup ou grades
-                if (data.firstName && data.lastName && data.studentNumber && data.nameInStats) {
+                if (data.firstName && data.lastName && data.studentNumber) {
                     router.push("/setup");
                     return;
                 }
@@ -204,7 +198,6 @@ export default function OnboardingPage() {
                 if (data.firstName) setFirstName(data.firstName);
                 if (data.lastName) setLastName(data.lastName);
                 if (data.studentNumber) setStudentNumber(data.studentNumber);
-                if (data.nameInStats) setNameInStats(data.nameInStats);
             } catch (error) {
                 console.error("Error checking profile:", error);
             } finally {
@@ -231,8 +224,7 @@ export default function OnboardingPage() {
                 body: JSON.stringify({
                     firstName: formatFirstName(firstName.trim()),
                     lastName: formatLastName(lastName.trim()),
-                    studentNumber: studentNumber.trim(),
-                    nameInStats: nameInStats
+                    studentNumber: studentNumber.trim()
                 })
             });
 
@@ -358,18 +350,6 @@ export default function OnboardingPage() {
                                     Ton numéro étudiant EFREI à 8 chiffres (ex: 20250001).
                                 </p>
                             )}
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <input
-                                id="nameInStats"
-                                type="checkbox"
-                                checked={nameInStats}
-                                onChange={handleNameInStatsChange}
-                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                            />
-                            <Label htmlFor="nameInStats" className="text-sm select-none">
-                                Autoriser l&#39;affichage de mon nom dans les statistiques de classement
-                            </Label>
                         </div>
                         <Button
                             size="lg"

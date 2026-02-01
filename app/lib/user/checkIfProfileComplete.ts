@@ -8,6 +8,6 @@ export function checkIfProfileComplete(user: WithId<Document>): boolean {
 
     const userTyped = user as unknown as UserDB;
 
-    return !(!userTyped.firstName || !userTyped.lastName || !userTyped.studentNumber || !userTyped.nameInStats);
+    return !(!userTyped.firstName || !userTyped.lastName || !userTyped.studentNumber);
 
 }

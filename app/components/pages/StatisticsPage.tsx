@@ -160,9 +160,16 @@ function Leaderboard({data, isUser = false}: { data: Ranking[], isUser?: boolean
                                     {/* Name */}
                                     <TableCell className="font-medium">
                                         <div className="flex items-center gap-2">
-                                            <span className={shouldBlur ? "blur-xs select-none" : ""}>
-                                                {name}
-                                            </span>
+                                            {
+                                                shouldBlur ? (
+                                                    <a href={"/settings"} className={shouldBlur ? "blur-xs select-none cursor-help" : ""} title={shouldBlur ? "Vous pouvez afficher votre nom dans les paramètres" : ""}>
+                                                        {name}
+                                                    </a>
+                                                ) : (
+                                                    <span>{name}</span>
+                                                )
+                                            }
+
                                             {
                                                 isUser && (
                                                     <Badge variant="secondary" className="text-xs">

@@ -64,7 +64,6 @@ export async function getStudentRankings(
             }
             // If nameInStats is false, null, undefined, keep "John Doe"
         }
-        console.log(`Ranking #${index + 1}: ${displayName} - Avg: ${semester.average} (${semester.branch} ${semester.groupe})`);
         return {
             name: displayName + "/-/" + (semester.branch !== "" && semester.branch ? semester.branch : semester.groupe),
             average: semester.average!,

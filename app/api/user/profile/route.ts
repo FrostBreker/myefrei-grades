@@ -166,6 +166,7 @@ export async function PUT(request: NextRequest) {
             firstName: formattedFirstName,
             lastName: formattedLastName,
             studentNumber: trimmedStudentNumber,
+            nameInStats: Boolean(nameInStats),
         });
     } catch (error) {
         console.error("Error updating profile:", error);
