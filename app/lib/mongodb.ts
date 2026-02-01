@@ -10,24 +10,6 @@ declare global {
 
 let clientPromise: Promise<MongoClient>;
 
-// Debug: log all relevant environment variables (only in production to debug deployment issues)
-if (process.env.NODE_ENV === 'production') {
-    console.log('🔍 Environment Variables Debug:');
-    console.log('   NODE_ENV:', process.env.NODE_ENV);
-    console.log('   MONGODB_URI exists:', !!process.env.MONGODB_URI);
-    console.log('   MONGODB_URI length:', process.env.MONGODB_URI?.length);
-    console.log('   MONGODB_URI first 30 chars:', process.env.MONGODB_URI?.substring(0, 30));
-    console.log('   MONGODB_URI char codes [0-10]:', process.env.MONGODB_URI?.substring(0, 10).split('').map(c => c.charCodeAt(0)));
-    console.log('   NEXTAUTH_URL:', process.env.NEXTAUTH_URL);
-    console.log('   NEXTAUTH_SECRET exists:', !!process.env.NEXTAUTH_SECRET);
-    console.log('   GOOGLE_CLIENT_ID exists:', !!process.env.GOOGLE_CLIENT_ID);
-    console.log('   GOOGLE_CLIENT_SECRET exists:', !!process.env.GOOGLE_CLIENT_SECRET);
-    console.log('   NEW_RELIC_LICENSE_KEY exists:', !!process.env.NEW_RELIC_LICENSE_KEY);
-    console.log('   NEW_RELIC_APP_NAME:', process.env.NEW_RELIC_APP_NAME);
-    console.log('   ENABLE_NEW_RELIC:', process.env.ENABLE_NEW_RELIC);
-    console.log('   All env keys:', Object.keys(process.env).filter(k => !k.startsWith('npm_')).join(', '));
-}
-
 // Only initialize MongoDB connection at runtime, not during build
 let uri = process.env.MONGODB_URI;
 
