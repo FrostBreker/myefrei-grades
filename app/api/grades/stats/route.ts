@@ -4,14 +4,16 @@ import { ObjectId} from "mongodb";
 import {UserSemesterDB} from "@lib/grades/types";
 import {requestAuthCheck} from "@lib/api/request_check";
 import {calculateBranchRankingsForGroup, calculateFiliereRankings, calculateGroupeRankings, calculateGroupeRankingsForSpe, calculateLevelStats, calculateUEAverage} from "@lib/stats/group_rankings";
+import { instrumentApiRoute, noticeError } from "@lib/newrelic";
 
 export async function GET(request: Request) {
-    try {
-        const session = await requestAuthCheck();
-        if (!session || !session?.user) return;
+    return instrumentApiRoute('grades/stats/GET', async () => {
+        try {
+            const session = await requestAuthCheck();
+            if (!session || !session?.user) return;
 
-        const { searchParams } = new URL(request.url);
-        const semesterId = searchParams.get('semesterId');
+            const { searchParams } = new URL(request.url);
+            const semesterId = searchParams.get('semesterId');
 
         if (!semesterId) {
             return NextResponse.json(
@@ -219,11 +221,13 @@ export async function GET(request: Request) {
             userAverage: userGlobalAvg
         });
 
-    } catch (error) {
-        console.error("Error getting stats:", error);
-        return NextResponse.json(
-            { error: "Erreur serveur" },
-            { status: 500 }
-        );
-    }
+        } catch (error) {
+            console.error("Error getting stats:", error);
+            if (error instanceof Error) noticeError(error, { route: 'grades/stats/GET' });
+            return NextResponse.json(
+                { error: "Erreur serveur" },
+                { status: 500 }
+            );
+        }
+    }, { email: undefined });
 }

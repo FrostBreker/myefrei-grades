@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@lib/mongodb";
 import {requestAuthCheck} from "@lib/api/request_check";
+import { instrumentApiRoute, noticeError } from "@lib/newrelic";
 
 // Regex pour les noms (lettres, accents, tirets, apostrophes, espaces)
 const nameRegex = /^[a-zA-ZÀ-ÿ\s'-]+$/;
@@ -71,105 +72,111 @@ function validateStudentNumber(studentNumber: string): { valid: boolean; error?:
 
 // GET - Récupérer le profil de l'utilisateur
 export async function GET() {
-    try {
-        const session = await requestAuthCheck();
-        if (!session || !session?.user) return;
+    return instrumentApiRoute('user/profile/GET', async () => {
+        try {
+            const session = await requestAuthCheck();
+            if (!session || !session?.user) return;
 
-        const client = await clientPromise;
-        const db = client.db();
+            const client = await clientPromise;
+            const db = client.db();
 
-        const user = await db.collection('users').findOne({ email: session.user.email });
-        if (!user) {
-            return NextResponse.json({ error: "Utilisateur non trouvé" }, { status: 404 });
+            const user = await db.collection('users').findOne({ email: session.user.email });
+            if (!user) {
+                return NextResponse.json({ error: "Utilisateur non trouvé" }, { status: 404 });
+            }
+
+            return NextResponse.json({
+                firstName: user.firstName || '',
+                lastName: user.lastName || '',
+                studentNumber: user.studentNumber || '',
+                email: user.email || '',
+                nameInStats: user.nameInStats || false,
+            });
+        } catch (error) {
+            console.error("Error fetching profile:", error);
+            if (error instanceof Error) noticeError(error, { route: 'user/profile/GET' });
+            return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
         }
-
-        return NextResponse.json({
-            firstName: user.firstName || '',
-            lastName: user.lastName || '',
-            studentNumber: user.studentNumber || '',
-            email: user.email || '',
-            nameInStats: user.nameInStats || false,
-        });
-    } catch (error) {
-        console.error("Error fetching profile:", error);
-        return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
-    }
+    });
 }
 
 // PUT - Mettre à jour le profil de l'utilisateur
 export async function PUT(request: NextRequest) {
-    try {
-        const session = await requestAuthCheck();
-        if (!session || !session?.user) return;
+    return instrumentApiRoute('user/profile/PUT', async () => {
+        try {
+            const session = await requestAuthCheck();
+            if (!session || !session?.user) return;
 
-        const body = await request.json();
-        const { firstName, lastName, studentNumber, nameInStats } = body;
+            const body = await request.json();
+            const { firstName, lastName, studentNumber, nameInStats } = body;
 
-        // Validation du prénom
-        const firstNameValidation = validateName(firstName, "prénom");
-        if (!firstNameValidation.valid) {
-            return NextResponse.json({ error: firstNameValidation.error }, { status: 400 });
+            // Validation du prénom
+            const firstNameValidation = validateName(firstName, "prénom");
+            if (!firstNameValidation.valid) {
+                return NextResponse.json({ error: firstNameValidation.error }, { status: 400 });
+            }
+
+            // Validation du nom
+            const lastNameValidation = validateName(lastName, "nom");
+            if (!lastNameValidation.valid) {
+                return NextResponse.json({ error: lastNameValidation.error }, { status: 400 });
+            }
+
+            // Validation du numéro étudiant
+            const studentNumberValidation = validateStudentNumber(studentNumber);
+            if (!studentNumberValidation.valid) {
+                return NextResponse.json({ error: studentNumberValidation.error }, { status: 400 });
+            }
+
+            const client = await clientPromise;
+            const db = client.db();
+
+            // Vérifier si le numéro étudiant est déjà utilisé par un autre utilisateur
+            const existingWithNumber = await db.collection('users').findOne({
+                studentNumber: studentNumber.trim(),
+                email: { $ne: session.user.email }
+            });
+
+            if (existingWithNumber) {
+                return NextResponse.json({ error: "Ce numéro étudiant est déjà utilisé" }, { status: 400 });
+            }
+
+            // Formater et sauvegarder les données
+            const formattedFirstName = formatFirstName(firstName);
+            const formattedLastName = formatLastName(lastName);
+            const trimmedStudentNumber = studentNumber.trim();
+
+            // Vérifier si l'utilisateur a déjà un createdAt
+            const existingUser = await db.collection('users').findOne({ email: session.user.email });
+            const updateData: Record<string, unknown> = {
+                firstName: formattedFirstName,
+                lastName: formattedLastName,
+                studentNumber: trimmedStudentNumber,
+                nameInStats: Boolean(nameInStats),
+            };
+
+            // Ajouter createdAt si il n'existe pas
+            if (existingUser && !existingUser.createdAt) {
+                updateData.createdAt = new Date();
+            }
+
+            // Mettre à jour le profil
+            await db.collection('users').updateOne(
+                { email: session.user.email },
+                { $set: updateData }
+            );
+
+            return NextResponse.json({
+                success: true,
+                firstName: formattedFirstName,
+                lastName: formattedLastName,
+                studentNumber: trimmedStudentNumber,
+                nameInStats: Boolean(nameInStats),
+            });
+        } catch (error) {
+            console.error("Error updating profile:", error);
+            if (error instanceof Error) noticeError(error, { route: 'user/profile/PUT' });
+            return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
         }
-
-        // Validation du nom
-        const lastNameValidation = validateName(lastName, "nom");
-        if (!lastNameValidation.valid) {
-            return NextResponse.json({ error: lastNameValidation.error }, { status: 400 });
-        }
-
-        // Validation du numéro étudiant
-        const studentNumberValidation = validateStudentNumber(studentNumber);
-        if (!studentNumberValidation.valid) {
-            return NextResponse.json({ error: studentNumberValidation.error }, { status: 400 });
-        }
-
-        const client = await clientPromise;
-        const db = client.db();
-
-        // Vérifier si le numéro étudiant est déjà utilisé par un autre utilisateur
-        const existingWithNumber = await db.collection('users').findOne({
-            studentNumber: studentNumber.trim(),
-            email: { $ne: session.user.email }
-        });
-
-        if (existingWithNumber) {
-            return NextResponse.json({ error: "Ce numéro étudiant est déjà utilisé" }, { status: 400 });
-        }
-
-        // Formater et sauvegarder les données
-        const formattedFirstName = formatFirstName(firstName);
-        const formattedLastName = formatLastName(lastName);
-        const trimmedStudentNumber = studentNumber.trim();
-
-        // Vérifier si l'utilisateur a déjà un createdAt
-        const existingUser = await db.collection('users').findOne({ email: session.user.email });
-        const updateData: Record<string, unknown> = {
-            firstName: formattedFirstName,
-            lastName: formattedLastName,
-            studentNumber: trimmedStudentNumber,
-            nameInStats: Boolean(nameInStats),
-        };
-
-        // Ajouter createdAt si il n'existe pas
-        if (existingUser && !existingUser.createdAt) {
-            updateData.createdAt = new Date();
-        }
-
-        // Mettre à jour le profil
-        await db.collection('users').updateOne(
-            { email: session.user.email },
-            { $set: updateData }
-        );
-
-        return NextResponse.json({
-            success: true,
-            firstName: formattedFirstName,
-            lastName: formattedLastName,
-            studentNumber: trimmedStudentNumber,
-            nameInStats: Boolean(nameInStats),
-        });
-    } catch (error) {
-        console.error("Error updating profile:", error);
-        return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
-    }
+    });
 }

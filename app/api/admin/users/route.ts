@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@lib/mongodb";
 import { ObjectId } from "mongodb";
 import {requestAdminCheck} from "@lib/api/request_check";
+import { instrumentApiRoute, noticeError } from "@lib/newrelic";
 
 export async function GET(request: NextRequest) {
-    try {
-        const isAuthorized = await requestAdminCheck();
-        if (!isAuthorized) return;
+    return instrumentApiRoute('admin/users/GET', async () => {
+        try {
+            const isAuthorized = await requestAdminCheck();
+            if (!isAuthorized) return;
 
         const { searchParams } = new URL(request.url);
         const search = searchParams.get("search") || "";
@@ -93,8 +95,10 @@ export async function GET(request: NextRequest) {
                 totalPages: Math.ceil(total / limit),
             }
         });
-    } catch (error) {
-        console.error("Error fetching users:", error);
-        return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
-    }
+        } catch (error) {
+            console.error("Error fetching users:", error);
+            if (error instanceof Error) noticeError(error, { route: 'admin/users/GET' });
+            return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+        }
+    });
 }
