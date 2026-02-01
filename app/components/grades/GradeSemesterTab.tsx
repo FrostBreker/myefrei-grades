@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {TabsContent} from "@/components/ui/tabs";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {Badge} from "@/components/ui/badge";
@@ -6,6 +6,7 @@ import {Button} from "@/components/ui/button";
 import {BookOpen, Edit} from "lucide-react";
 import {Module, UserSemester} from "@lib/grades/types";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
+import {Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle} from "@/components/ui/dialog";
 
 type Props = {
     semester: UserSemester | undefined;
@@ -17,8 +18,63 @@ type Props = {
 };
 
 function GradeSemesterTab({semester, semNumber, setEditingSemester, branches = [], selectedBranch = "", onBranchChange}: Props) {
+    const [showBranchDialog, setShowBranchDialog] = useState(false);
+    const [tempSelectedBranch, setTempSelectedBranch] = useState(selectedBranch || "");
+
+    // Ouvrir automatiquement la popup si des branches sont disponibles mais aucune n'est sélectionnée
+    useEffect(() => {
+        if (branches.length > 0 && !selectedBranch && semester) {
+            // Utiliser un microtask pour éviter l'erreur ESLint de setState synchrone
+            queueMicrotask(() => setShowBranchDialog(true));
+        }
+    }, [branches, selectedBranch, semester]);
+
+    const handleConfirmBranch = () => {
+        if (tempSelectedBranch && onBranchChange) {
+            onBranchChange(tempSelectedBranch);
+            setShowBranchDialog(false);
+        }
+    };
+
     return (
         <TabsContent value={"s" + semNumber}>
+            {/* Dialog pour forcer la sélection de branche */}
+            <Dialog open={showBranchDialog} onOpenChange={(open) => {
+                // Ne pas permettre de fermer si aucune branche n'est sélectionnée
+                if (!open && !selectedBranch) return;
+                setShowBranchDialog(open);
+            }}>
+                <DialogContent showCloseButton={!!selectedBranch}>
+                    <DialogHeader>
+                        <DialogTitle>Sélection du groupe</DialogTitle>
+                        <DialogDescription>
+                            Veuillez sélectionner votre groupe pour le semestre {semNumber}. Cette information est nécessaire pour afficher vos notes correctement.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <Select value={tempSelectedBranch} onValueChange={setTempSelectedBranch}>
+                            <SelectTrigger className="w-full cursor-pointer">
+                                <SelectValue placeholder="Sélectionnez votre groupe"/>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {branches.map((branch) => (
+                                    <SelectItem className="cursor-pointer" key={branch} value={branch}>{branch}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            onClick={handleConfirmBranch}
+                            disabled={!tempSelectedBranch}
+                            className="cursor-pointer"
+                        >
+                            Confirmer
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             {semester ? (
                 <Card className="hover:shadow-lg transition-shadow">
                     <CardHeader>
