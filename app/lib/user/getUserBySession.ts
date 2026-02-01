@@ -25,6 +25,9 @@ export async function getUserBySession(session: Session | null, request: NextReq
             image: session.user.image || '',
             clientIP,
             createdAt: new Date(),
+            lastLogin: new Date(),
+            nameInStats: false,
+            name: session.user.name || '',
         };
         // Save to DB
         await db.collection('users').insertOne(userDB);
@@ -66,6 +69,8 @@ export async function getUserBySession(session: Session | null, request: NextReq
         firstName: userDB.firstName,
         lastName: userDB.lastName,
         studentNumber: userDB.studentNumber,
+        nameInStats: userDB.nameInStats,
+        name: userDB.name,
     };
 }
 

@@ -87,6 +87,8 @@ export async function GET() {
             firstName: user.firstName || '',
             lastName: user.lastName || '',
             studentNumber: user.studentNumber || '',
+            email: user.email || '',
+            nameInStats: user.nameInStats || false,
         });
     } catch (error) {
         console.error("Error fetching profile:", error);
@@ -101,7 +103,7 @@ export async function PUT(request: NextRequest) {
         if (!session || !session?.user) return;
 
         const body = await request.json();
-        const { firstName, lastName, studentNumber } = body;
+        const { firstName, lastName, studentNumber, nameInStats } = body;
 
         // Validation du prénom
         const firstNameValidation = validateName(firstName, "prénom");
@@ -145,6 +147,7 @@ export async function PUT(request: NextRequest) {
             firstName: formattedFirstName,
             lastName: formattedLastName,
             studentNumber: trimmedStudentNumber,
+            nameInStats: Boolean(nameInStats),
         };
 
         // Ajouter createdAt si il n'existe pas

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import {useEffect, useState} from "react";
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
+import {Button} from "@/components/ui/button";
+import {Badge} from "@/components/ui/badge";
 import {
     Select,
     SelectContent,
@@ -33,54 +33,16 @@ import {
     Loader2,
     Target,
 } from "lucide-react";
-import { UserSemester, AcademicProfile } from "@lib/grades/types";
+import {UserSemester, AcademicProfile} from "@lib/grades/types";
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "@/components/ui/table";
 
 interface StatisticsPageProps {
     initialProfile: AcademicProfile;
     initialSemesters: UserSemester[];
 }
 
-interface AverageStats {
-    average: number | null;
-    rank: number | null;
-    totalWithGrades: number;
-    min: number | null;
-    max: number | null;
-    median: number | null;
-}
-
-interface ModuleStats {
-    moduleId: string;
-    moduleCode: string;
-    moduleName: string;
-    stats: AverageStats;
-}
-
-interface UEStats {
-    ueId: string;
-    ueCode: string;
-    ueName: string;
-    stats: AverageStats;
-    modules: ModuleStats[];
-}
-
-interface GroupStats {
-    name: string;
-    totalUsers: number;
-    averages: {
-        global: AverageStats;
-        byUE: UEStats[];
-    };
-}
-
-interface StatsData {
-    groupe: GroupStats;
-    filiere: GroupStats;
-    cursus: GroupStats;
-}
-
 // Component to display rank with medal
-function RankDisplay({ rank, total }: { rank: number | null; total: number }) {
+function RankDisplay({rank, total}: { rank: number | null; total: number }) {
     if (rank === null || total === 0) {
         return <span className="text-muted-foreground">-</span>;
     }
@@ -91,13 +53,13 @@ function RankDisplay({ rank, total }: { rank: number | null; total: number }) {
 
     if (rank === 1) {
         color = "text-yellow-500";
-        icon = <Trophy className="h-4 w-4 inline mr-1" />;
+        icon = <Trophy className="h-4 w-4 inline mr-1"/>;
     } else if (rank === 2) {
         color = "text-gray-400";
-        icon = <Trophy className="h-4 w-4 inline mr-1" />;
+        icon = <Trophy className="h-4 w-4 inline mr-1"/>;
     } else if (rank === 3) {
         color = "text-amber-600";
-        icon = <Trophy className="h-4 w-4 inline mr-1" />;
+        icon = <Trophy className="h-4 w-4 inline mr-1"/>;
     } else if (percentage <= 10) {
         color = "text-green-500";
     } else if (percentage <= 25) {
@@ -115,9 +77,9 @@ function RankDisplay({ rank, total }: { rank: number | null; total: number }) {
 }
 
 // Component to show comparison with group average
-function ComparisonIndicator({ userAvg, groupAvg }: { userAvg: number | null; groupAvg: number | null }) {
+function ComparisonIndicator({userAvg, groupAvg}: { userAvg: number | null; groupAvg: number | null }) {
     if (userAvg === null || groupAvg === null) {
-        return <Minus className="h-4 w-4 text-muted-foreground" />;
+        return <Minus className="h-4 w-4 text-muted-foreground"/>;
     }
 
     const diff = userAvg - groupAvg;
@@ -126,37 +88,117 @@ function ComparisonIndicator({ userAvg, groupAvg }: { userAvg: number | null; gr
     if (diff > 0.5) {
         return (
             <span className="flex items-center text-green-500 text-xs">
-                <TrendingUp className="h-3 w-3 mr-1" />
+                <TrendingUp className="h-3 w-3 mr-1"/>
                 +{absDiff}
             </span>
         );
     } else if (diff < -0.5) {
         return (
             <span className="flex items-center text-red-500 text-xs">
-                <TrendingDown className="h-3 w-3 mr-1" />
+                <TrendingDown className="h-3 w-3 mr-1"/>
                 -{absDiff}
             </span>
         );
     } else {
         return (
             <span className="flex items-center text-muted-foreground text-xs">
-                <Minus className="h-3 w-3 mr-1" />
+                <Minus className="h-3 w-3 mr-1"/>
                 ≈
             </span>
         );
     }
 }
 
+// Leaderboard show group rankings
+const rankStyles: Record<number, string> = {
+    1: "bg-gradient-to-r from-yellow-400 to-yellow-500 text-black shadow-[0_0_20px_rgba(250,204,21,0.5)]",
+    2: "bg-gradient-to-r from-zinc-300 to-zinc-400 text-black shadow-[0_0_16px_rgba(161,161,170,0.4)]",
+    3: "bg-gradient-to-r from-amber-600 to-amber-700 text-white shadow-[0_0_16px_rgba(180,83,9,0.4)]",
+}
+
+function Leaderboard({data, isUser = false}: { data: Ranking[], isUser?: boolean }) {
+    return (
+        <Card className="w-full border-muted/40 bg-background/80 backdrop-blur">
+            <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                    🏆 Classement {isUser ? "des étudiants" : "par groupe"}
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow className="border-muted/40">
+                            <TableHead className="w-16"></TableHead>
+                            <TableHead>Groupe</TableHead>
+                            <TableHead className="text-right">Moyenne</TableHead>
+                        </TableRow>
+                    </TableHeader>
+
+                    <TableBody>
+                        {data.map((item) => {
+                            const name = item.name.split("/-/")[0];
+                            const group = item.name.split("/-/")[1] || "N/A";
+                            const shouldBlur = isUser && name === "John Doe";
+
+                            return (
+                                <TableRow
+                                    key={item.rank}
+                                    className="transition-colors hover:bg-muted/40"
+                                >
+                                    {/* Rank */}
+                                    <TableCell>
+                                        <div
+                                            className={`
+                        flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold
+                        ${rankStyles[item.rank] ?? "bg-muted text-muted-foreground"}
+                      `}
+                                        >
+                                            {item.rank}
+                                        </div>
+                                    </TableCell>
+
+                                    {/* Name */}
+                                    <TableCell className="font-medium">
+                                        <div className="flex items-center gap-2">
+                                            <span className={shouldBlur ? "blur-xs select-none" : ""}>
+                                                {name}
+                                            </span>
+                                            {
+                                                isUser && (
+                                                    <Badge variant="secondary" className="text-xs">
+                                                        {group}
+                                                    </Badge>
+                                                )
+                                            }
+                                        </div>
+                                    </TableCell>
+
+                                    {/* Average */}
+                                    <TableCell className="text-right font-mono text-sm">
+                                        {item.average.toFixed(2)}
+                                    </TableCell>
+                                </TableRow>
+                            )
+                        })}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+    )
+}
+
 // Stats card for a specific group level
-function StatsCard({ stats, userAverage, level }: { stats: GroupStats; userAverage: number | null; level: string }) {
+function StatsCard({stats, userAverage, userLeaderboard, level}: { stats: GroupStats & { ranking?: Ranking[] }; userAverage: number | null; userLeaderboard: Ranking[] | undefined, level: string }) {
     const levelLabels: Record<string, string> = {
-        groupe: "Groupe",
+        branch: "Groupe",
+        spe: "Spécialité",
         filiere: "Filière",
         cursus: "Cursus"
     };
 
     const levelColors: Record<string, string> = {
-        groupe: "bg-blue-500",
+        branch: "bg-green-500",
+        spe: "bg-blue-500",
         filiere: "bg-purple-500",
         cursus: "bg-orange-500"
     };
@@ -172,7 +214,7 @@ function StatsCard({ stats, userAverage, level }: { stats: GroupStats; userAvera
                             <span>{stats.name}</span>
                         </CardTitle>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Users className="h-4 w-4" />
+                            <Users className="h-4 w-4"/>
                             {stats.totalUsers} étudiants
                         </div>
                     </div>
@@ -183,7 +225,7 @@ function StatsCard({ stats, userAverage, level }: { stats: GroupStats; userAvera
                         <div className="text-center p-2 md:p-3 bg-muted/50 rounded-lg">
                             <div className="text-xs text-muted-foreground mb-1">Ton classement</div>
                             <div className="text-lg md:text-xl font-bold">
-                                <RankDisplay rank={stats.averages.global.rank} total={stats.averages.global.totalWithGrades} />
+                                <RankDisplay rank={stats.averages.global.rank} total={stats.averages.global.totalWithGrades}/>
                             </div>
                         </div>
 
@@ -202,7 +244,7 @@ function StatsCard({ stats, userAverage, level }: { stats: GroupStats; userAvera
                                 <span className="text-lg md:text-xl font-bold">
                                     {userAverage?.toFixed(2) ?? "-"}
                                 </span>
-                                <ComparisonIndicator userAvg={userAverage} groupAvg={stats.averages.global.average} />
+                                <ComparisonIndicator userAvg={userAverage} groupAvg={stats.averages.global.average}/>
                             </div>
                         </div>
 
@@ -216,6 +258,18 @@ function StatsCard({ stats, userAverage, level }: { stats: GroupStats; userAvera
                     </div>
                 </CardContent>
             </Card>
+
+            <div className={"w-full grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4"}>
+                {/* Leaderboard per Group */}
+                {stats.ranking && stats.ranking.length > 0 && (
+                    <Leaderboard data={stats.ranking}/>
+                )}
+                {/*Leaderboard per users*/}
+                {userLeaderboard && userLeaderboard.length > 0 && (
+                    <Leaderboard data={userLeaderboard} isUser={true}/>
+                )}
+            </div>
+
 
             {/* UE details */}
             {stats.averages.byUE.length > 0 && level !== "cursus" && (
@@ -235,7 +289,7 @@ function StatsCard({ stats, userAverage, level }: { stats: GroupStats; userAvera
                                         <span className="text-muted-foreground">
                                             Max: {ue.stats.max?.toFixed(2) ?? "-"}
                                         </span>
-                                        <RankDisplay rank={ue.stats.rank} total={ue.stats.totalWithGrades} />
+                                        <RankDisplay rank={ue.stats.rank} total={ue.stats.totalWithGrades}/>
                                     </div>
                                 </div>
                             </AccordionTrigger>
@@ -248,7 +302,7 @@ function StatsCard({ stats, userAverage, level }: { stats: GroupStats; userAvera
                                         >
                                             <div className="flex flex-wrap items-center gap-1 md:gap-2">
                                                 <span className="text-muted-foreground">{mod.moduleCode}</span>
-                                                <span className="truncate max-w-[150px] md:max-w-none">{mod.moduleName}</span>
+                                                <span className="truncate max-w-37.5 md:max-w-none">{mod.moduleName}</span>
                                             </div>
                                             <div className="flex items-center gap-2 md:gap-4 self-end sm:self-auto">
                                                 <span className="text-muted-foreground">
@@ -257,7 +311,7 @@ function StatsCard({ stats, userAverage, level }: { stats: GroupStats; userAvera
                                                 <span className="text-muted-foreground hidden sm:inline">
                                                     Max: {mod.stats.max?.toFixed(2) ?? "-"}
                                                 </span>
-                                                <RankDisplay rank={mod.stats.rank} total={mod.stats.totalWithGrades} />
+                                                <RankDisplay rank={mod.stats.rank} total={mod.stats.totalWithGrades}/>
                                             </div>
                                         </div>
                                     ))}
@@ -271,11 +325,12 @@ function StatsCard({ stats, userAverage, level }: { stats: GroupStats; userAvera
     );
 }
 
-export default function StatisticsPage({ initialSemesters }: StatisticsPageProps) {
+export default function StatisticsPage({initialSemesters}: StatisticsPageProps) {
     const [loadingStats, setLoadingStats] = useState(false);
     const [semesters] = useState<UserSemester[]>(initialSemesters);
     const [selectedSemester, setSelectedSemester] = useState<UserSemester | null>(initialSemesters[0] || null);
     const [stats, setStats] = useState<StatsData | null>(null);
+    const [userLeaderboard, setUserLeaderboard] = useState<StudentRankingsData | null>(null);
     const [error, setError] = useState<string | null>(null);
 
 
@@ -291,13 +346,22 @@ export default function StatisticsPage({ initialSemesters }: StatisticsPageProps
         setStats(null);
 
         try {
-            const response = await fetch(`/api/grades/stats?semesterId=${semesterId}`);
-            const data = await response.json();
+            const responseStats = await fetch(`/api/grades/stats?semesterId=${semesterId}`);
+            const statsData = await responseStats.json();
 
-            if (data.success) {
-                setStats(data.stats);
+            if (statsData.success) {
+                setStats(statsData.stats);
             } else {
-                setError(data.error || "Erreur lors du chargement des statistiques");
+                setError(statsData.error || "Erreur lors du chargement des statistiques");
+            }
+
+            const responseUserLeaderboard = await fetch(`/api/grades/stats/user?semesterId=${semesterId}`);
+            const leaderboardData = await responseUserLeaderboard.json();
+
+            if (leaderboardData.success) {
+                setUserLeaderboard(leaderboardData.rankings);
+            } else {
+                setError(leaderboardData.error || "Erreur lors du chargement du classement des étudiants");
             }
         } catch (err) {
             console.error("Error loading stats:", err);
@@ -315,7 +379,7 @@ export default function StatisticsPage({ initialSemesters }: StatisticsPageProps
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <h1 className="text-2xl md:text-4xl font-bold flex items-center gap-3">
-                            <BarChart3 className="h-6 w-6 md:h-8 md:w-8 text-primary" />
+                            <BarChart3 className="h-6 w-6 md:h-8 md:w-8 text-primary"/>
                             Statistiques
                         </h1>
                         <p className="text-sm md:text-base text-muted-foreground mt-1">
@@ -333,12 +397,12 @@ export default function StatisticsPage({ initialSemesters }: StatisticsPageProps
                                 if (sem) setSelectedSemester(sem);
                             }}
                         >
-                            <SelectTrigger className="w-full sm:w-[280px] cursor-pointer">
-                                <SelectValue placeholder="Sélectionner un semestre" />
+                            <SelectTrigger className="w-full sm:w-70 cursor-pointer">
+                                <SelectValue placeholder="Sélectionner un semestre"/>
                             </SelectTrigger>
                             <SelectContent>
                                 {semesters.map(sem => (
-                                    <SelectItem key={sem._id} value={sem._id}>
+                                    <SelectItem key={sem._id} value={sem._id} className={"cursor-pointer"}>
                                         {sem.name} - {sem.filiere} {sem.groupe} ({sem.academicYear})
                                     </SelectItem>
                                 ))}
@@ -351,14 +415,14 @@ export default function StatisticsPage({ initialSemesters }: StatisticsPageProps
                 {loadingStats ? (
                     <div className="flex items-center justify-center py-12">
                         <div className="text-center">
-                            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+                            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary"/>
                             <p className="text-muted-foreground">Calcul des statistiques...</p>
                         </div>
                     </div>
                 ) : error ? (
                     <Card>
                         <CardContent className="p-8 text-center">
-                            <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                            <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground"/>
                             <h3 className="text-lg font-bold mb-2">Statistiques indisponibles</h3>
                             <p className="text-muted-foreground mb-4">{error}</p>
                             <Button variant="outline" onClick={() => selectedSemester && loadStats(selectedSemester._id)}>
@@ -369,12 +433,12 @@ export default function StatisticsPage({ initialSemesters }: StatisticsPageProps
                 ) : stats && selectedSemester ? (
                     <>
                         {/* Summary card */}
-                        <Card className="bg-gradient-to-r from-primary/10 to-primary/5">
+                        <Card className="bg-linear-to-r from-primary/10 to-primary/5">
                             <CardContent className="p-4 md:p-6">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                     <div className="flex items-center gap-4">
                                         <div className="p-3 bg-primary/20 rounded-full">
-                                            <Target className="h-6 w-6 md:h-8 md:w-8 text-primary" />
+                                            <Target className="h-6 w-6 md:h-8 md:w-8 text-primary"/>
                                         </div>
                                         <div>
                                             <div className="text-xs md:text-sm text-muted-foreground">Ta moyenne - {selectedSemester.name}</div>
@@ -386,8 +450,14 @@ export default function StatisticsPage({ initialSemesters }: StatisticsPageProps
                                     <div className="grid grid-cols-3 gap-3 md:gap-6 text-center">
                                         <div className="p-2 md:p-3 bg-background/50 rounded-lg">
                                             <div className="text-xs text-muted-foreground">Groupe</div>
+                                            <div className="font-bold text-green-500 text-sm md:text-base">
+                                                #{stats.group.averages.global.rank ?? "-"}/{stats.group.totalUsers}
+                                            </div>
+                                        </div>
+                                        <div className="p-2 md:p-3 bg-background/50 rounded-lg">
+                                            <div className="text-xs text-muted-foreground">Spécialité</div>
                                             <div className="font-bold text-blue-500 text-sm md:text-base">
-                                                #{stats.groupe.averages.global.rank ?? "-"}/{stats.groupe.totalUsers}
+                                                #{stats.spe.averages.global.rank ?? "-"}/{stats.spe.totalUsers}
                                             </div>
                                         </div>
                                         <div className="p-2 md:p-3 bg-background/50 rounded-lg">
@@ -408,12 +478,17 @@ export default function StatisticsPage({ initialSemesters }: StatisticsPageProps
                         </Card>
 
                         {/* Tabs for each level */}
-                        <Tabs defaultValue="groupe" className="space-y-4">
-                            <TabsList className="grid w-full grid-cols-3">
-                                <TabsTrigger value="groupe" className="text-xs md:text-sm cursor-pointer">
+                        <Tabs defaultValue="branch" className="space-y-4">
+                            <TabsList className="grid w-full min-h-24 sm:min-h-10 grid-cols-2 sm:grid-cols-4">
+                                <TabsTrigger value="branch" className="text-xs md:text-sm cursor-pointer">
                                     <span className="hidden sm:inline">Groupe</span>
                                     <span className="sm:hidden">Grp</span>
-                                    <Badge variant="secondary" className="ml-1 md:ml-2 text-xs">{stats.groupe.totalUsers}</Badge>
+                                    <Badge variant="secondary" className="ml-1 md:ml-2 text-xs">{stats.group.totalUsers}</Badge>
+                                </TabsTrigger>
+                                <TabsTrigger value="spe" className="text-xs md:text-sm cursor-pointer">
+                                    <span className="hidden sm:inline">Spécialité</span>
+                                    <span className="sm:hidden">Spé</span>
+                                    <Badge variant="secondary" className="ml-1 md:ml-2 text-xs">{stats.spe.totalUsers}</Badge>
                                 </TabsTrigger>
                                 <TabsTrigger value="filiere" className="text-xs md:text-sm cursor-pointer">
                                     <span className="hidden sm:inline">Filière</span>
@@ -421,21 +496,26 @@ export default function StatisticsPage({ initialSemesters }: StatisticsPageProps
                                     <Badge variant="secondary" className="ml-1 md:ml-2 text-xs">{stats.filiere.totalUsers}</Badge>
                                 </TabsTrigger>
                                 <TabsTrigger value="cursus" className="text-xs md:text-sm cursor-pointer">
-                                    Cursus
+                                    <span className="hidden sm:inline">Cursus</span>
+                                    <span className="sm:hidden">Cur</span>
                                     <Badge variant="secondary" className="ml-1 md:ml-2 text-xs">{stats.cursus.totalUsers}</Badge>
                                 </TabsTrigger>
                             </TabsList>
 
-                            <TabsContent value="groupe">
-                                <StatsCard stats={stats.groupe} userAverage={selectedSemester.average} level="groupe" />
+                            <TabsContent value="branch">
+                                <StatsCard stats={stats.group} userAverage={selectedSemester.average} userLeaderboard={userLeaderboard?.group} level="branch"/>
+                            </TabsContent>
+
+                            <TabsContent value="spe">
+                                <StatsCard stats={stats.spe} userAverage={selectedSemester.average} userLeaderboard={userLeaderboard?.spe} level="spe"/>
                             </TabsContent>
 
                             <TabsContent value="filiere">
-                                <StatsCard stats={stats.filiere} userAverage={selectedSemester.average} level="filiere" />
+                                <StatsCard stats={stats.filiere} userAverage={selectedSemester.average} userLeaderboard={userLeaderboard?.filiere} level="filiere"/>
                             </TabsContent>
 
                             <TabsContent value="cursus">
-                                <StatsCard stats={stats.cursus} userAverage={selectedSemester.average} level="cursus" />
+                                <StatsCard stats={stats.cursus} userAverage={selectedSemester.average} userLeaderboard={userLeaderboard?.cursus} level="cursus"/>
                             </TabsContent>
                         </Tabs>
                     </>
