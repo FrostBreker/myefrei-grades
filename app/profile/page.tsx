@@ -6,6 +6,7 @@ import ProfilePage from "@/app/components/pages/ProfilePage";
 import { getAcademicProfile } from "@lib/grades/profileService";
 import clientPromise from "@lib/mongodb";
 import {checkIfProfileComplete} from "@lib/user/checkIfProfileComplete";
+import {checkIfEmailVerified} from "@lib/user/checkIfEmailVerified";
 
 export const metadata: Metadata = {
     title: "Mon Profil - MyEFREI Grades",
@@ -32,6 +33,12 @@ export default async function Profile() {
     const isProfileComplete = checkIfProfileComplete(user);
     if (!isProfileComplete) {
         redirect("/onboarding");
+    }
+
+    // Check if user has verified their EFREI email
+    const isEmailVerified = checkIfEmailVerified(user);
+    if (!isEmailVerified) {
+        redirect("/verify-email");
     }
 
     // Get academic profile

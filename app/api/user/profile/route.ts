@@ -91,6 +91,8 @@ export async function GET() {
                 studentNumber: user.studentNumber || '',
                 email: user.email || '',
                 nameInStats: user.nameInStats || false,
+                emailVerified: user.emailVerified || false,
+                emailEfrei: user.emailEfrei || '',
             });
         } catch (error) {
             console.error("Error fetching profile:", error);
