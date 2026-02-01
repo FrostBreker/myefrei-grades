@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getYearTemplateById } from "@lib/grades/yearTemplateService";
 import {requestAuthCheck} from "@lib/api/request_check";
+import { instrumentApiRoute, noticeError } from "@lib/newrelic";
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -10,30 +11,33 @@ interface RouteParams {
  * GET - Get a single year template by ID
  */
 export async function GET(request: Request, { params }: RouteParams) {
-    try {
-        const isAuthorized = await requestAuthCheck();
-        if (!isAuthorized) return;
+    return instrumentApiRoute('admin/year-templates/[id]/GET', async () => {
+        try {
+            const isAuthorized = await requestAuthCheck();
+            if (!isAuthorized) return;
 
-        const { id } = await params;
+            const { id } = await params;
 
-        const template = await getYearTemplateById(id);
+            const template = await getYearTemplateById(id);
 
-        if (!template) {
+            if (!template) {
+                return NextResponse.json(
+                    { error: "Template non trouvé" },
+                    { status: 404 }
+                );
+            }
+
+            return NextResponse.json({
+                success: true,
+                template
+            });
+        } catch (error) {
+            console.error("Error getting year template:", error);
+            if (error instanceof Error) noticeError(error, { route: 'admin/year-templates/[id]/GET' });
             return NextResponse.json(
-                { error: "Template non trouvé" },
-                { status: 404 }
+                { error: "Erreur serveur" },
+                { status: 500 }
             );
         }
-
-        return NextResponse.json({
-            success: true,
-            template
-        });
-    } catch (error) {
-        console.error("Error getting year template:", error);
-        return NextResponse.json(
-            { error: "Erreur serveur" },
-            { status: 500 }
-        );
-    }
+    });
 }

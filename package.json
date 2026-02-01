@@ -19,6 +19,7 @@
   ],
   "scripts": {
     "dev": "next dev",
+    "dev:newrelic": "cross-env ENABLE_NEW_RELIC=true next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -45,7 +46,8 @@
     "hamburger-react": "^2.5.2",
     "lucide-react": "^0.563.0",
     "mongodb": "^5.9.2",
-    "next": "16.1.4",
+    "newrelic": "^13.11.0",
+    "next": "^16.1.6",
     "next-auth": "^4.24.13",
     "next-themes": "^0.4.6",
     "react": "19.2.3",
@@ -56,6 +58,8 @@
     "typescript": "^5"
   },
   "devDependencies": {
+    "@types/newrelic": "^9.14.8",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.4"
   }

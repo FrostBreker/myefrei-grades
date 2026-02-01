@@ -48,5 +48,17 @@ jobs:
             docker stop $CONTAINER_NAME || true
             docker rm $CONTAINER_NAME || true
 
-            # Start new container
-            docker run --restart=always -p 10030:3000 --network soundtales-network --ip 172.18.0.40 --name $CONTAINER_NAME -d $IMAGE_NAME || { echo "Failed to start Docker container"; exit 1; }
+            # Start new container with environment variables from .env file
+            docker run --restart=always \
+              -p 10030:3000 \
+              --network soundtales-network \
+              --ip 172.18.0.40 \
+              --env-file .env \
+              --name $CONTAINER_NAME \
+              -d $IMAGE_NAME || { echo "Failed to start Docker container"; exit 1; }
+
+            # Verify container is running and New Relic is initialized
+            sleep 10
+            docker logs $CONTAINER_NAME 2>&1 | head -20
+            
+            echo "Deployment completed successfully!"
