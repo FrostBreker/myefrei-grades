@@ -4,7 +4,6 @@ import "./globals.css";
 import Provider from "@components/Provider";
 import {ReactNode} from "react";
 import Script from "next/script";
-import newrelic from 'newrelic'
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -26,26 +25,33 @@ const shouldInjectNewRelic =
     process.env.NODE_ENV === 'production' ||
     process.env.ENABLE_NEW_RELIC === "true";
 
-// Type assertion for New Relic agent internals (not fully typed)
-const nrAgent = newrelic as unknown as {
-    agent: {
-        collector: { isConnected: () => boolean };
-        on: (event: string, callback: () => void) => void;
-    };
-};
+// Get browser timing header only at runtime, not during build
+let browserTimingHeader = '';
 
-// Wait for New Relic Node agent to connect
-if (shouldInjectNewRelic && nrAgent.agent?.collector?.isConnected() === false) {
-    await new Promise<void>(resolve => nrAgent.agent.on('connected', () => resolve()));
+if (shouldInjectNewRelic && typeof window === 'undefined') {
+    try {
+        // Dynamic require to avoid loading during build
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const newrelic = require('newrelic');
+
+        // Check if agent is connected
+        if (newrelic.agent?.collector?.isConnected?.() === false) {
+            // Wait for connection with timeout
+            await Promise.race([
+                new Promise<void>(resolve => newrelic.agent.on('connected', () => resolve())),
+                new Promise<void>(resolve => setTimeout(resolve, 5000)) // 5s timeout
+            ]);
+        }
+
+        browserTimingHeader = newrelic.getBrowserTimingHeader({
+            hasToRemoveScriptWrapper: true,
+            allowTransactionlessInjection: true
+        }) || '';
+    } catch {
+        // New Relic not available during build - this is expected
+        browserTimingHeader = '';
+    }
 }
-
-// Get the browser agent <script> tag (no wrapper tags)
-const browserTimingHeader = shouldInjectNewRelic
-    ? newrelic.getBrowserTimingHeader({
-        hasToRemoveScriptWrapper: true,
-        allowTransactionlessInjection: true
-    })
-    : '';
 
 export default function RootLayout({children}: Readonly<{ children: ReactNode }>) {
     return (
@@ -53,7 +59,7 @@ export default function RootLayout({children}: Readonly<{ children: ReactNode }>
         <head>
             {/* Inject the New Relic Browser agent script */}
             {
-                shouldInjectNewRelic && (
+                shouldInjectNewRelic && browserTimingHeader && (
                     <Script
                         id="nr-browser-agent"
                         strategy="afterInteractive"

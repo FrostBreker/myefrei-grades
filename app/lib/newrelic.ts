@@ -1,4 +1,18 @@
-import newrelic from 'newrelic'
+// Lazy-load newrelic to avoid initialization during build
+let newrelicModule: typeof import('newrelic') | null = null;
+
+function getNewRelic() {
+    if (!newrelicModule && typeof window === 'undefined') {
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            newrelicModule = require('newrelic');
+        } catch {
+            // New Relic not available (during build or not installed)
+            newrelicModule = null;
+        }
+    }
+    return newrelicModule;
+}
 
 const isNewRelicEnabled =
     process.env.NODE_ENV === 'production' ||
@@ -10,20 +24,23 @@ const isConfigured = Boolean(process.env.NEW_RELIC_LICENSE_KEY)
 const shouldUseNewRelic = isNewRelicEnabled && isConfigured
 
 export function addCustomAttribute(key: string, value: string | number | boolean) {
-    if (shouldUseNewRelic) {
-        newrelic.addCustomAttribute(key, value)
+    const nr = getNewRelic();
+    if (shouldUseNewRelic && nr) {
+        nr.addCustomAttribute(key, value)
     }
 }
 
 export function addCustomAttributes(attributes: Record<string, string | number | boolean>) {
-    if (shouldUseNewRelic) {
-        newrelic.addCustomAttributes(attributes)
+    const nr = getNewRelic();
+    if (shouldUseNewRelic && nr) {
+        nr.addCustomAttributes(attributes)
     }
 }
 
 export function setTransactionName(name: string) {
-    if (shouldUseNewRelic) {
-        newrelic.setTransactionName(name)
+    const nr = getNewRelic();
+    if (shouldUseNewRelic && nr) {
+        nr.setTransactionName(name)
     }
 }
 
@@ -31,8 +48,9 @@ export function noticeError(
     error: Error,
     customAttributes?: Record<string, string | number | boolean>
 ) {
-    if (shouldUseNewRelic) {
-        newrelic.noticeError(error, customAttributes)
+    const nr = getNewRelic();
+    if (shouldUseNewRelic && nr) {
+        nr.noticeError(error, customAttributes)
     }
 }
 
@@ -43,8 +61,9 @@ export function startWebTransaction<T>(
     name: string,
     handler: () => Promise<T>
 ): Promise<T> {
-    if (shouldUseNewRelic) {
-        return newrelic.startWebTransaction(name, handler)
+    const nr = getNewRelic();
+    if (shouldUseNewRelic && nr) {
+        return nr.startWebTransaction(name, handler)
     }
     return handler()
 }
@@ -57,8 +76,9 @@ export function startBackgroundTransaction<T>(
     group: string,
     handler: () => Promise<T>
 ): Promise<T> {
-    if (shouldUseNewRelic) {
-        return newrelic.startBackgroundTransaction(name, group, handler)
+    const nr = getNewRelic();
+    if (shouldUseNewRelic && nr) {
+        return nr.startBackgroundTransaction(name, group, handler)
     }
     return handler()
 }
@@ -67,8 +87,9 @@ export function startBackgroundTransaction<T>(
  * End the current transaction
  */
 export function endTransaction() {
-    if (shouldUseNewRelic) {
-        newrelic.endTransaction()
+    const nr = getNewRelic();
+    if (shouldUseNewRelic && nr) {
+        nr.endTransaction()
     }
 }
 
@@ -76,11 +97,12 @@ export function endTransaction() {
  * Add user information to the transaction for better debugging
  */
 export function setUserAttributes(userId?: string, email?: string) {
-    if (shouldUseNewRelic && (userId || email)) {
+    const nr = getNewRelic();
+    if (shouldUseNewRelic && nr && (userId || email)) {
         const attributes: Record<string, string> = {}
         if (userId) attributes.userId = userId
         if (email) attributes.userEmail = email
-        newrelic.addCustomAttributes(attributes)
+        nr.addCustomAttributes(attributes)
     }
 }
 
@@ -88,8 +110,9 @@ export function setUserAttributes(userId?: string, email?: string) {
  * Record a custom event for analytics
  */
 export function recordCustomEvent(eventType: string, attributes: Record<string, string | number | boolean>) {
-    if (shouldUseNewRelic) {
-        newrelic.recordCustomEvent(eventType, attributes)
+    const nr = getNewRelic();
+    if (shouldUseNewRelic && nr) {
+        nr.recordCustomEvent(eventType, attributes)
     }
 }
 
@@ -137,8 +160,9 @@ export async function instrumentApiRoute<T>(
  * Track database operation timing
  */
 export function recordDbMetric(operation: string, duration: number) {
-    if (shouldUseNewRelic) {
-        newrelic.recordMetric(`Custom/Database/${operation}`, duration)
+    const nr = getNewRelic();
+    if (shouldUseNewRelic && nr) {
+        nr.recordMetric(`Custom/Database/${operation}`, duration)
     }
 }
 
@@ -146,9 +170,10 @@ export function recordDbMetric(operation: string, duration: number) {
  * Track external service calls
  */
 export function recordExternalCall(service: string, operation: string, duration: number) {
-    if (shouldUseNewRelic) {
-        newrelic.recordMetric(`Custom/External/${service}/${operation}`, duration)
+    const nr = getNewRelic();
+    if (shouldUseNewRelic && nr) {
+        nr.recordMetric(`Custom/External/${service}/${operation}`, duration)
     }
 }
 
-export { newrelic as newrelicAgent }
+export { getNewRelic as newrelicAgent }

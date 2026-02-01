@@ -1,4 +1,9 @@
 export async function register() {
+    // Skip during build phase (no NEXT_RUNTIME means we're building)
+    if (!process.env.NEXT_RUNTIME) {
+        return
+    }
+
     // Only run on Node.js runtime (not Edge)
     if (process.env.NEXT_RUNTIME === 'nodejs') {
         const shouldEnableNewRelic =
