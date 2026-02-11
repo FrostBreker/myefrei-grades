@@ -3,7 +3,6 @@ import clientPromise from "@lib/mongodb";
 import {ObjectId} from "mongodb";
 import {UserSemesterDB} from "@lib/grades/types";
 import {requestAuthCheck} from "@lib/api/request_check";
-import {getStudentRankings} from "@lib/stats/user_ranking";
 import { instrumentApiRoute, noticeError } from "@lib/newrelic";
 
 export async function GET(request: Request) {
