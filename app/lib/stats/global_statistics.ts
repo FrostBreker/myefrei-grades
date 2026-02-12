@@ -1,14 +1,15 @@
-import {GroupRankDB, ObjectStatsDB, RankingDB, UserRankDB} from "@lib/stats/types";
+import {GroupRankDB, ObjectStatsDB, RankingDB, UserGroupStats, UserRankDB, UserStats} from "@lib/stats/types";
 import clientPromise from "@lib/mongodb";
 import {Document, ObjectId, WithId} from "mongodb";
 import {UserSemesterDB} from "@lib/grades/types";
-import {GetUsersSemester} from "@lib/userSemesters/users";
-import {FetchStatisticsOPTS} from "@lib/types";
+import {GetUserSemesterByUserId, GetUsersSemester} from "@lib/userSemesters/users";
+import {FetchStatisticsOPTS, FetchStatisticsUserOPTS} from "@lib/types";
 import {calculateAverage, calculateMedian, getAveragesArray} from "@lib/stats/utils";
 import {calculateGroupRankings} from "@lib/stats/group_rankings";
 import {calculateStudentRankings} from "@lib/stats/user_ranking";
 import {calculateUEStats} from "@lib/stats/ue_ranking";
 import {calculateModuleStats} from "@lib/stats/module_ranking";
+import {calculateUserGroupStats} from "@lib/stats/group_stats";
 
 const GRADES_STATS_COLLECTION = 'gradesStats';
 
@@ -44,23 +45,15 @@ async function getLastGlobalStatistics(fetchOpts: FetchStatisticsOPTS): Promise<
     }
 
     if (lastRanking) {
-        if (lastRanking.date instanceof Date) {
-            lastRanking.date = new Date(lastRanking.date);
-        } else {
-            lastRanking.date = new Date(lastRanking.date);
-        }
+        lastRanking.date = new Date(lastRanking.date);
+        rankingData.lastRanking = lastRanking as RankingDB | null;
     }
 
     if (previousRanking) {
-        if (previousRanking.date instanceof Date) {
-            previousRanking.date = new Date(previousRanking.date);
-        } else {
-            previousRanking.date = new Date(previousRanking.date);
-        }
+        previousRanking.date = new Date(previousRanking.date);
+        rankingData.previousRanking = previousRanking as RankingDB | null;
     }
 
-    rankingData.lastRanking = lastRanking as RankingDB | null;
-    rankingData.previousRanking = previousRanking as RankingDB | null;
 
     return rankingData;
 }
@@ -96,7 +89,7 @@ async function updateGlobalStatistics(_id: ObjectId, fetchOpts: FetchStatisticsO
 
     // Exclude _id from the update to avoid modifying the immutable field
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { _id: _, ...rankingWithoutId } = ranking;
+    const {_id: _, ...rankingWithoutId} = ranking;
 
     await db.collection(GRADES_STATS_COLLECTION).updateOne(
         {
@@ -188,3 +181,70 @@ export async function ConstructGlobalStatisticsDocument(fetchOpts: FetchStatisti
 }
 
 // Get the global statistics for a given name, semester and academic year. If there are no statistics, return null.
+export async function GetGlobalStatistics(fetchOpts: FetchStatisticsUserOPTS): Promise<UserStats | null> {
+    const {semester, academicYear, userId} = fetchOpts;
+    if (!userId || !semester || !academicYear) {
+        return null;
+    }
+
+    const userSemester: UserSemesterDB | null = await GetUserSemesterByUserId(fetchOpts);
+    if (!userSemester) {
+        return null;
+    }
+
+    const overallGlobalStats = await getLastGlobalStatistics({
+        name: userSemester.cursus,
+        semester,
+        academicYear,
+        isCursus: true,
+    });
+
+    const speGlobalStats = await getLastGlobalStatistics({
+        name: userSemester.filiere,
+        semester,
+        academicYear,
+        isCursus: false,
+    });
+
+    if (!overallGlobalStats || !overallGlobalStats.lastRanking) {
+        return null;
+    }
+
+    if (!speGlobalStats || !speGlobalStats.lastRanking) {
+        return null;
+    }
+
+    const branchStats: UserGroupStats | null = calculateUserGroupStats({
+        groupName: userSemester.branch !== "" && userSemester.branch !== null && userSemester.branch !== undefined ? userSemester.branch : null,
+        type: 'branch',
+        previousRankings: speGlobalStats.previousRanking,
+        currentRankings: speGlobalStats.lastRanking,
+        userId: userId,
+    })
+
+    const groupStats: UserGroupStats | null = calculateUserGroupStats({
+        groupName: userSemester.groupe ?? null,
+        type: 'groupe',
+        previousRankings: speGlobalStats.previousRanking,
+        currentRankings: speGlobalStats.lastRanking,
+        userId: userId,
+    });
+
+    const speStats: UserGroupStats | null = calculateUserGroupStats({
+        groupName: userSemester.filiere,
+        type: 'filiere',
+        previousRankings: speGlobalStats.previousRanking,
+        currentRankings: speGlobalStats.lastRanking,
+        userId: userId,
+    });
+
+    const cursusStats: UserGroupStats | null = calculateUserGroupStats({
+        groupName: userSemester.cursus,
+        type: 'cursus',
+        previousRankings: overallGlobalStats.previousRanking,
+        currentRankings: overallGlobalStats.lastRanking,
+        userId: userId,
+    });
+
+
+}

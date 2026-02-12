@@ -46,7 +46,6 @@ export interface ObjectStatsDB {
 export interface UserStats {
     userId: string;
     semester: number;
-    average: NumberDeviations | null;
     branch: UserGroupStats | null;
     group: UserGroupStats | null;
     spe: UserGroupStats | null;
@@ -56,7 +55,7 @@ export interface UserStats {
 export interface UserGroupStats {
     groupName: string;
     semester: number;
-    userPLAverage: NumberDeviations | null; // Profit & Loss Average for the student compared to the group average
+    userAverage: NumberDeviations | null; // Profit & Loss Average for the student compared to the group average
     groupAverage: NumberDeviations | null; // Average for the group
     max: NumberDeviations | null;
     numberOfStudents: number;
@@ -75,5 +74,4 @@ export interface Rank {
 export interface NumberDeviations {
     current: number;
     raw: number;
-    percentage: number;
 }

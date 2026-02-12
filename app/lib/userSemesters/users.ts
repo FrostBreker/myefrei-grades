@@ -1,5 +1,5 @@
 import {UserSemesterDB} from "@lib/grades/types";
-import {FetchStatisticsOPTS} from "@lib/types";
+import {FetchStatisticsOPTS, FetchStatisticsUserOPTS} from "@lib/types";
 import clientPromise from "@lib/mongodb";
 import {WithId} from "mongodb";
 
@@ -33,4 +33,29 @@ export async function GetUsersSemester(fetchOpts: FetchStatisticsOPTS): Promise<
     }
 
     return userSemesters
+}
+
+// Get user semester by userId, semester, academicYear
+export async function GetUserSemesterByUserId(fetchOpts: FetchStatisticsUserOPTS): Promise<UserSemesterDB | null> {
+    const {userId, semester, academicYear} = fetchOpts;
+    if (!userId || !semester || !academicYear) {
+        return null;
+    }
+
+    const client = await clientPromise;
+    const db = client.db();
+
+    // Find the user semester matching the criteria
+    const userSemester: WithId<UserSemesterDB> | null = await db.collection<UserSemesterDB>(USER_SEMESTERS_COLLECTION).findOne({
+        userId,
+        semester,
+        academicYear,
+    });
+
+    // If no user semester is found, return null
+    if (!userSemester) {
+        return null;
+    }
+
+    return userSemester
 }
