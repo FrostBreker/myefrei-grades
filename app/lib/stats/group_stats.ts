@@ -1,5 +1,6 @@
 import {UserGroupStatsOPTS} from "@lib/types";
 import {NumberDeviations, Rank, UserGroupStats, UserRankDB} from "@lib/stats/types";
+import {getUserDisplayNameForRanking} from "@lib/user/checkIfUserShowInStats";
 
 export async function calculateUserGroupStats(fetchOpts: UserGroupStatsOPTS): Promise<UserGroupStats | null> {
     const {groupName, type, previousRankings, currentRankings, userId} = fetchOpts;
@@ -57,7 +58,7 @@ export async function calculateUserGroupStats(fetchOpts: UserGroupStatsOPTS): Pr
     };
 
     const numberOfStudents = currentStudentRankings ? currentStudentRankings.length : 0;
-    const studentRankings: Rank[] = currentStudentRankings ? await constructStudentsRank(currentStudentRankings, previousStudentRankings) : [];
+    const studentRankings: Rank[] = currentStudentRankings ? await constructStudentsRank(currentStudentRankings, previousStudentRankings, type === 'cursus') : [];
     // const groupRankings: Rank[] = currentRankings.groupRankings ? await constructRank(currentRankings.groupRankings, previousRankings ? previousRankings.groupRankings : null) : [];
 
 
@@ -86,7 +87,7 @@ function calculateStudentRankings(studentRankings: UserRankDB[]): UserRankDB[] {
 }
 
 // Construct the top 10 students in the group with their rank and average, and calculate the raw difference compared to previous rankings if available.
-async function constructStudentsRank(currentRankings: UserRankDB[], previousRankings: UserRankDB[] | null): Promise<Rank[]> {
+async function constructStudentsRank(currentRankings: UserRankDB[], previousRankings: UserRankDB[] | null, isCursus: boolean): Promise<Rank[]> {
     const slicedCurrentRankings = currentRankings.slice(0, 10);
     const ranks: Rank[] = [];
     for (const ranking of slicedCurrentRankings) {
@@ -101,7 +102,7 @@ async function constructStudentsRank(currentRankings: UserRankDB[], previousRank
                 raw: previousRanking ? ranking.average - previousRanking.average : 0,
             },
             // TODO: CONSTRUCT NAME FROM USER ID
-            name: ranking.userId.toString(), // You can replace this with the actual user name if you have it available
+            name: await getUserDisplayNameForRanking(ranking.userId) + "/-/" + (semester.branch !== "" && semester.branch ? semester.branch : semester.groupe)
         });
     }
 
@@ -113,12 +114,9 @@ function calculateAverage(currentRankings: UserRankDB[], previousRankings: UserR
     const currentAverage = currentRankings.reduce((sum, ranking) => sum + ranking.average, 0) / currentRankings.length;
     const previousAverage = previousRankings ? previousRankings.reduce((sum, ranking) => sum + ranking.average, 0) / previousRankings.length : currentAverage;
 
-    const percentage = (currentAverage / previousAverage - 1) * 100;
-
     return {
         current: currentAverage,
-        previous: previousAverage,
-        percentage,
+        raw: currentAverage - previousAverage,
     }
 }
 
@@ -127,11 +125,8 @@ function calculateMax(currentRankings: UserRankDB[], previousRankings: UserRankD
     const currentMax = Math.max(...currentRankings.map(ranking => ranking.average));
     const previousMax = previousRankings ? Math.max(...previousRankings.map(ranking => ranking.average)) : currentMax;
 
-    const percentage = (currentMax / previousMax - 1) * 100;
-
     return {
         current: currentMax,
-        previous: previousMax,
-        percentage,
+        raw: currentMax - previousMax,
     }
 }
