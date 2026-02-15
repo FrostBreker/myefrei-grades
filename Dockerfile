@@ -25,4 +25,4 @@ COPY --from=builder /app/next.config.* ./
 
 EXPOSE 3000
 
-CMD ["npm","run","start:newrelic"]
+CMD ["npm","run","start"]
