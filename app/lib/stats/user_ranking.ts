@@ -3,7 +3,7 @@ import {ObjectId} from "mongodb";
 import {UserRankDB} from "@lib/stats/types";
 
 // Calculate student rankings based on the valid semesters
-export async function calculateStudentRankings(validSemesters: UserSemesterDB[]): Promise<UserRankDB[] | null> {
+export async function calculateStudentRankings(validSemesters: UserSemesterDB[], isCursus: boolean): Promise<UserRankDB[] | null> {
     // Sort semesters by average descending
     const sortedSemesters = [...validSemesters].sort((a, b) => (b.average ?? 0) - (a.average ?? 0));
 
@@ -16,7 +16,7 @@ export async function calculateStudentRankings(validSemesters: UserSemesterDB[])
             average: sem.average ?? 0,
             userId: new ObjectId(sem.userId),
             spe: sem.groupe,
-            group: sem.branch !== "" ? sem.branch ?? sem.groupe : sem.groupe,
+            group: isCursus ? sem.filiere : (sem.branch !== "" ? sem.branch ?? sem.groupe : sem.groupe),
         });
     }
 

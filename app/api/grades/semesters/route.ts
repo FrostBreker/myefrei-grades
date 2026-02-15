@@ -4,7 +4,6 @@ import clientPromise from "@lib/mongodb";
 import {UE, UserSemester} from "@lib/grades/types";
 import {requestAuthCheck} from "@lib/api/request_check";
 import {instrumentApiRoute, noticeError, startBackgroundTransaction, addCustomAttributes} from "@lib/newrelic";
-import {ObjectId} from "mongodb";
 import {ConstructGlobalStatisticsDocument, UpdateLastGlobalStatistics} from "@lib/stats/global_statistics";
 import {FetchStatisticsOPTS} from "@lib/types";
 
@@ -165,12 +164,10 @@ export async function PUT(request: Request) {
 
 // Function to update global stats for a semester (e.g., after grades are updated)
 async function updateSemesterGlobalStats(semester: UserSemester, name: string, isCursus: boolean) {
-    console.log("called updateSemesterGlobalStats with name:", name, "for semester:", semester._id);
     return startBackgroundTransaction(
         `UpdateGlobalStats/${name}`,
         'stats',
         async () => {
-            console.log(`Starting global stats update for ${name} - Semester: ${semester._id}`);
             try {
                 const fetchOpts: FetchStatisticsOPTS = {
                     name: name,
@@ -183,6 +180,7 @@ async function updateSemesterGlobalStats(semester: UserSemester, name: string, i
                     statsName: name,
                     semester: semester.semester,
                     academicYear: semester.academicYear,
+                    isCursus: isCursus,
                 });
 
                 const newRankings = await ConstructGlobalStatisticsDocument(fetchOpts);
@@ -192,6 +190,7 @@ async function updateSemesterGlobalStats(semester: UserSemester, name: string, i
                         statsName: name,
                         semester: semester.semester,
                         academicYear: semester.academicYear,
+                        isCursus: isCursus,
                     });
                     return;
                 }
@@ -206,6 +205,7 @@ async function updateSemesterGlobalStats(semester: UserSemester, name: string, i
                         statsName: name,
                         semester: semester.semester,
                         academicYear: semester.academicYear,
+                        isCursus: isCursus,
                     });
                 }
                 throw error;

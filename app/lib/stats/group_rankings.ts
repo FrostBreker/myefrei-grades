@@ -9,9 +9,9 @@ export async function calculateGroupRankings(validSemesters: UserSemesterDB[], i
     validSemesters.forEach(sem => {
         const group = sem.branch;
         const spe = sem.groupe;
-        const groupName = spe + "/-/" + (isCursus ? sem.filiere : (group !== "" && group !== null && group !== undefined ? group : spe));
+        const groupName = isCursus ? sem.filiere : (spe + "/-/" + (group !== "" && group !== null && group !== undefined ? group : spe));
         if (!groupMap.has(groupName)) {
-            groupMap.set(groupName, {average: 0, numberOfStudents: 0, spe});
+            groupMap.set(groupName, {average: 0, numberOfStudents: 0, spe: isCursus ? groupName : spe});
         }
         const groupData = groupMap.get(groupName);
         if (groupData) {
@@ -27,7 +27,7 @@ export async function calculateGroupRankings(validSemesters: UserSemesterDB[], i
         groupRankings.push({
             rank: 0,
             average,
-            groupName: groupName.split("/-/")[1], // Extract group name without spe for display
+            groupName: isCursus ? groupName : groupName.split("/-/")[1], // Extract group name without spe for display
             spe: data.spe,
         });
     }

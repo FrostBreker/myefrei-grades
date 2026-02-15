@@ -4,7 +4,7 @@ import {UserDB} from "@lib/user/types";
 
 const USER_COL = "users";
 
-export async function getUserDisplayNameForRanking(userId: ObjectId): Promise<string | null> {
+export async function getUserDisplayNameForRanking(userId: ObjectId): Promise<string> {
     // Determine display name based on nameInStats field
     let displayName = "John Doe";
 

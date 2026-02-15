@@ -147,7 +147,7 @@ export async function ConstructGlobalStatisticsDocument(fetchOpts: FetchStatisti
 
     // Calculate group and student rankings
     const groupRankings: GroupRankDB[] | null = await calculateGroupRankings(validSemesters, isCursus);
-    const studentRankings: UserRankDB[] | null = await calculateStudentRankings(validSemesters);
+    const studentRankings: UserRankDB[] | null = await calculateStudentRankings(validSemesters, isCursus);
 
     if (groupRankings === null || studentRankings === null) {
         return null;
@@ -214,7 +214,7 @@ export async function GetGlobalStatistics(fetchOpts: FetchStatisticsUserOPTS): P
         return null;
     }
 
-    const branchStats: UserGroupStats | null = calculateUserGroupStats({
+    const branchStats: UserGroupStats | null = await calculateUserGroupStats({
         groupName: userSemester.branch !== "" && userSemester.branch !== null && userSemester.branch !== undefined ? userSemester.branch : null,
         type: 'branch',
         previousRankings: speGlobalStats.previousRanking,
@@ -222,7 +222,7 @@ export async function GetGlobalStatistics(fetchOpts: FetchStatisticsUserOPTS): P
         userId: userId,
     })
 
-    const groupStats: UserGroupStats | null = calculateUserGroupStats({
+    const groupStats: UserGroupStats | null = await calculateUserGroupStats({
         groupName: userSemester.groupe ?? null,
         type: 'groupe',
         previousRankings: speGlobalStats.previousRanking,
@@ -230,7 +230,7 @@ export async function GetGlobalStatistics(fetchOpts: FetchStatisticsUserOPTS): P
         userId: userId,
     });
 
-    const speStats: UserGroupStats | null = calculateUserGroupStats({
+    const speStats: UserGroupStats | null = await calculateUserGroupStats({
         groupName: userSemester.filiere,
         type: 'filiere',
         previousRankings: speGlobalStats.previousRanking,
@@ -238,7 +238,7 @@ export async function GetGlobalStatistics(fetchOpts: FetchStatisticsUserOPTS): P
         userId: userId,
     });
 
-    const cursusStats: UserGroupStats | null = calculateUserGroupStats({
+    const cursusStats: UserGroupStats | null = await calculateUserGroupStats({
         groupName: userSemester.cursus,
         type: 'cursus',
         previousRankings: overallGlobalStats.previousRanking,
@@ -247,4 +247,25 @@ export async function GetGlobalStatistics(fetchOpts: FetchStatisticsUserOPTS): P
     });
 
 
+    return {
+        userId: userId.toString(),
+        semester,
+        branch: branchStats,
+        group: groupStats,
+        spe: speStats,
+        overall: cursusStats,
+    }
 }
+
+// Get the global statistics for plotting the evolution of a user's average over time. If there are no statistics, return null.
+// export async function GetGlobalStatisticsEvolution(fetchOpts: FetchStatisticsUserOPTS): Promise<{date: Date, average: number}[] | null> {
+//     const {semester, academicYear, userId} = fetchOpts;
+//     if (!userId || !semester || !academicYear) {
+//         return null;
+//     }
+//
+//     const userSemester: UserSemesterDB | null = await GetUserSemesterByUserId(fetchOpts);
+//     if (!userSemester) {
+//         return null;
+//     }
+// }
