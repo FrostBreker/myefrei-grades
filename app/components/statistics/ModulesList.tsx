@@ -1,9 +1,6 @@
 import {UE} from "@lib/grades/types";
 import {Accordion, AccordionContent, AccordionItem, AccordionTrigger} from "@/components/ui/accordion";
 import {Badge} from "@/components/ui/badge";
-import {Button} from "@/components/ui/button";
-import Link from "next/link";
-import {ArrowRight} from "lucide-react";
 import React from "react";
 
 export function UEList({ues, semesterId}: { ues: UE[], semesterId: string }) {
@@ -48,6 +45,42 @@ export function UEList({ues, semesterId}: { ues: UE[], semesterId: string }) {
                     </AccordionContent>
                 </AccordionItem>
             ))}
+            <br />
+        </Accordion>
+    );
+}
+
+export function SkeletonUEList() {
+    return (
+        <Accordion type="multiple" className="space-y-2 mt-4">
+            {[...Array(4)].map((_, i) => (
+                <AccordionItem key={i} value={`placeholder-${i}`} className="border rounded-lg">
+                    <AccordionTrigger className="px-3 md:px-4 hover:no-underline cursor-pointer">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full mr-2 md:mr-4 gap-2">
+                            <div className="flex flex-wrap items-center gap-1 md:gap-2">
+                                <Badge variant="outline" className="text-xs animate-pulse bg-muted/50 text-transparent">...</Badge>
+                                <span className="font-medium text-xs md:text-sm animate-pulse bg-muted/50 text-transparent">Loading...</span>
+                            </div>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-3 md:px-4 pb-4">
+                        <div className="space-y-2">
+                            {[...Array(2)].map((_, j) => (
+                                <div
+                                    key={j}
+                                    className="flex flex-col sm:flex-row sm:items-center justify-between p-2 bg-muted/30 rounded text-xs md:text-sm gap-2 animate-pulse"
+                                >
+                                    <div className="flex flex-wrap items-center gap-1 md:gap-2">
+                                        <span className="text-muted-foreground bg-muted/50 text-transparent rounded w-12 h-4">...</span>
+                                        <span className="truncate max-w-37.5 md:max-w-none bg-muted/50 text-transparent rounded w-24 h-4">Loading...</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            ))}
+            <br/>
         </Accordion>
     );
 }

@@ -4,19 +4,23 @@ import {Fragment, Suspense} from "react";
 import {BarChart3, Target} from "lucide-react";
 import {StatisticsSemesterSelector, StatisticsSemesterSelectorFallbackSkeleton} from "@components/statistics/SemesterSelector";
 import {redirect} from "next/navigation";
-import {UserStats} from "@lib/stats/types";
+import {UserGraphData, UserStats} from "@lib/stats/types";
 import {UserDB} from "@lib/user/types";
-import {GetGlobalStatistics} from "@lib/stats/global_statistics";
+import {GetGlobalStatistics, GetGlobalStatisticsEvolution} from "@lib/stats/global_statistics";
 import {getUserSemesters} from "@lib/grades/semesterService";
-import {Module, UE, UserSemester} from "@lib/grades/types";
+import {UE, UserSemester} from "@lib/grades/types";
 import {Card, CardContent} from "@/components/ui/card";
 import {Button} from "@/components/ui/button";
 import Link from "next/link";
 import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs";
 import {Badge} from "@/components/ui/badge";
-import {StatsCard} from "@components/statistics/StatsCard";
 import {TrendIndicator} from "@components/statistics/ComparisonIndicator";
-import {UEList} from "@components/statistics/ModulesList";
+import StatsTab from "@components/statistics/StatsTab";
+import {ObjectId} from "mongodb";
+import {SkeletonUserStatsHeader} from "@components/statistics/UserStatsHeader";
+import {SkeletonStatsGraph} from "@components/statistics/StatsGraph";
+import {SkeletonLeaderboardStats} from "@components/statistics/StatsLeaderboard";
+import {SkeletonUEList} from "@components/statistics/ModulesList";
 
 export type UserSemestersFormated = {
     _id: string;
@@ -88,16 +92,25 @@ export default async function StatisticsPage({semesterId, user}: StatisticsPageP
             redirect("/grades");
         }
     } else {
-        // Find the most recent semester (highest semester number) to show stats for by default
-        currentSemester = semesters.sort((a, b) => b.semester - a.semester)[0];
+        if (semesters.length > 1) {
+            const dateNow = new Date();
+            // Try to find the most recent semester that is not in the future
+            const pastSemesters = semesters.filter(sem => {
+                const [startYear, endYear] = sem.academicYear.split("-").map(Number);
+                // Assuming semester 1 starts in September and semester 2 starts in February
+                const semesterStartDate = sem.semester === 1 ? new Date(startYear, 8, 1) : new Date(endYear, 1, 1);
+                return semesterStartDate <= dateNow;
+            });
+            if (pastSemesters.length > 0) {
+                currentSemester = pastSemesters[0];
+            } else {
+                currentSemester = semesters[0];
+            }
+        } else {
+            currentSemester = semesters[0];
+        }
     }
 
-    // Fetch stats for the current semester
-    const stats: UserStats | null = await GetGlobalStatistics({
-        userId: user._id,
-        semester: currentSemester.semester,
-        academicYear: currentSemester.academicYear,
-    });
 
     return (
         <div className="min-h-screen bg-background py-4 md:py-8">
@@ -115,22 +128,39 @@ export default async function StatisticsPage({semesterId, user}: StatisticsPageP
                     </div>
 
                     {/* Semester selector */}
-                    <Suspense fallback={<StatisticsSemesterSelectorFallbackSkeleton/>}>
+                    <Suspense key={semesterId} fallback={<StatisticsSemesterSelectorFallbackSkeleton/>}>
                         <StatisticsSemesterSelector semesters={semesters} selectedSemester={currentSemester}/>
                     </Suspense>
                 </div>
 
                 {/* Stats content */}
-                <Suspense fallback={<p>Loading</p>}>
-                    {!stats || !stats.semester ? <UnAvailableStatsContent/> : <StatsContent stats={stats} ues={ues} semesterId={semesterId}/>}
+                <Suspense key={semesterId} fallback={<SkeletonStatsContent/>}>
+                    <StatsContent userId={user._id} semester={currentSemester.semester} academicYear={currentSemester.academicYear} semesterId={semesterId} ues={ues}/>
                 </Suspense>
             </div>
         </div>
-    );
+    )
 }
 
 // Component to display the main stats content with summary card and tabs for each level (group, specialty, branch, overall)
-function StatsContent({stats, ues, semesterId}: { stats: UserStats, ues: UE[], semesterId: string }) {
+async function StatsContent({userId, academicYear, semester, semesterId, ues}: { userId: ObjectId, academicYear: string, semester: number, semesterId: string, ues: UE[] }) {
+    // Fetch stats for the current semester
+    const stats: UserStats | null = await GetGlobalStatistics({
+        userId,
+        semester,
+        academicYear,
+    });
+
+    const graphStats: UserGraphData | null = await GetGlobalStatisticsEvolution({
+        userId,
+        semester,
+        academicYear,
+    })
+
+    if (!stats || !stats.semester) {
+        return <UnAvailableStatsContent/>;
+    }
+
     const currentUserAverage = stats.overall?.userAverage?.current ?? 0;
     const {branch, group, spe, overall} = stats;
     return (
@@ -184,13 +214,15 @@ function StatsContent({stats, ues, semesterId}: { stats: UserStats, ues: UE[], s
             </Card>
 
             {/* Tabs for each level */}
-            <Tabs defaultValue="branch" className="space-y-4">
+            <Tabs defaultValue={branch?.numberOfStudents ? "branch" : "spe"} className="space-y-4">
                 <TabsList className={`grid w-full ${branch?.numberOfStudents ? "min-h-24 grid-cols-2" : "min-h-10 grid-cols-3"} sm:min-h-10 ${branch?.numberOfStudents ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
-                    {branch?.numberOfStudents && (<TabsTrigger value="branch" className="text-xs md:text-sm cursor-pointer">
-                        <span className="hidden sm:inline">Groupe</span>
-                        <span className="sm:hidden">Grp</span>
-                        <Badge variant="secondary" className="ml-1 md:ml-2 text-xs">{branch?.numberOfStudents ?? group?.numberOfStudents}</Badge>
-                    </TabsTrigger>)}
+                    {branch?.numberOfStudents && (
+                        <TabsTrigger value="branch" className="text-xs md:text-sm cursor-pointer">
+                            <span className="hidden sm:inline">Groupe</span>
+                            <span className="sm:hidden">Grp</span>
+                            <Badge variant="secondary" className="ml-1 md:ml-2 text-xs">{branch?.numberOfStudents ?? group?.numberOfStudents}</Badge>
+                        </TabsTrigger>
+                    )}
                     <TabsTrigger value="spe" className="text-xs md:text-sm cursor-pointer">
                         <span className="hidden sm:inline">Spécialité</span>
                         <span className="sm:hidden">Spé</span>
@@ -208,25 +240,74 @@ function StatsContent({stats, ues, semesterId}: { stats: UserStats, ues: UE[], s
                     </TabsTrigger>
                 </TabsList>
 
-                {branch?.numberOfStudents && (<TabsContent value="branch">
-                    <StatsCard stats={branch ?? group} level="branch"/>
-                    <UEList ues={ues} semesterId={semesterId}/>
-                </TabsContent>)}
+                {branch?.numberOfStudents && (
+                    <TabsContent value="branch">
+                        <StatsTab stats={branch ?? group} level="branch" ues={ues} semesterId={semesterId} graph={graphStats}/>
+                    </TabsContent>
+                )}
 
                 <TabsContent value="spe">
-                    <StatsCard stats={group} level="spe"/>
-                    <UEList ues={ues} semesterId={semesterId}/>
+                    <StatsTab stats={group} level={"spe"} semesterId={semesterId} ues={ues} graph={graphStats}/>
                 </TabsContent>
 
                 <TabsContent value="filiere">
-                    <StatsCard stats={spe} level="filiere"/>
-                    <UEList ues={ues} semesterId={semesterId}/>
+                    <StatsTab stats={spe} level={"filiere"} semesterId={semesterId} ues={ues} graph={graphStats}/>
                 </TabsContent>
 
                 <TabsContent value="cursus">
-                    <StatsCard stats={overall} level="cursus"/>
+                    <StatsTab stats={overall} level={"cursus"} semesterId={semesterId} ues={ues} graph={graphStats}/>
                 </TabsContent>
             </Tabs>
         </Fragment>
     )
+}
+
+
+function SkeletonStatsContent() {
+    return (
+        <Fragment>
+            <Card className="bg-linear-to-r from-primary/10 to-primary/5 animate-pulse">
+                <CardContent className="p-4 md:p-6">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-primary/20 rounded-full">
+                                <Target className="h-6 w-6 md:h-8 md:w-8 text-primary"/>
+                            </div>
+                            <div>
+                                <div className="text-xs md:text-sm text-muted-foreground">Ta moyenne</div>
+                                <div className="h-8 w-24 bg-muted rounded mt-1"/>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3 md:gap-6 text-center">
+                            <div className="p-2 md:p-3 bg-background/50 rounded-lg">
+                                <div className="text-xs text-muted-foreground">Groupe</div>
+                                <div className="h-6 w-16 bg-muted rounded mt-1 mx-auto"/>
+                            </div>
+                            <div className="p-2 md:p-3 bg-background/50 rounded-lg">
+                                <div className="text-xs text-muted-foreground">Spécialité</div>
+                                <div className="h-6 w-16 bg-muted rounded mt-1 mx-auto"/>
+                            </div>
+                            <div className="p-2 md:p-3 bg-background/50 rounded-lg">
+                                <div className="text-xs text-muted-foreground">Filière</div>
+                                <div className="h-6 w-16 bg-muted rounded mt-1 mx-auto"/>
+                            </div>
+                            <div className="p-2 md:p-3 bg-background/50 rounded-lg">
+                                <div className="text-xs text-muted-foreground">Cursus</div>
+                                <div className="h-6 w-16 bg-muted rounded mt-1 mx-auto"/>
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <div className="space-y-4">
+                <div className="h-10 w-full bg-linear-to-r from-primary/10 to-primary/5 animate-pulse rounded-sm"/>
+                <SkeletonUserStatsHeader level={"branch"}/>
+                <SkeletonStatsGraph/>
+                <SkeletonLeaderboardStats/>
+                <SkeletonUEList/>
+            </div>
+
+        </Fragment>
+    );
 }
