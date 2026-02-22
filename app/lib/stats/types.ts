@@ -43,6 +43,7 @@ export interface ObjectStatsDB {
     studentRankings: UserRankDB[];
 }
 
+// Use in frontend to represent the stats for a user, with the different levels (branch, group, spe, overall)
 export interface UserStats {
     userId: string;
     semester: number;
@@ -74,4 +75,28 @@ export interface Rank {
 export interface NumberDeviations {
     current: number;
     raw: number;
+}
+
+
+// Use in frontend to represent plotting data for a graph, with the different levels (branch, group, spe, overall)
+export interface UserGraphData {
+    userId: string;
+    semester: number;
+    xAxis: Date[];
+    userAverage: PlottingData; // Average for the student
+    branch: UserGroupGraphData | null;
+    group: UserGroupGraphData | null;
+    spe: UserGroupGraphData | null;
+    overall: UserGroupGraphData | null;
+}
+
+export interface UserGroupGraphData {
+    groupAverages: PlottingData[]; // Average for the groups
+    userRanking: PlottingData; // Ranking of the student within the group
+    max: PlottingData; // Max for the group
+}
+
+export interface PlottingData {
+    label: string;
+    data: number[];
 }

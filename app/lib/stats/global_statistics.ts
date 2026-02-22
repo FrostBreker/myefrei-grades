@@ -1,4 +1,4 @@
-import {GroupRankDB, ObjectStatsDB, RankingDB, UserGroupStats, UserRankDB, UserStats} from "@lib/stats/types";
+import {GroupRankDB, ObjectStatsDB, PlottingData, RankingDB, UserGraphData, UserGroupGraphData, UserGroupStats, UserRankDB, UserStats} from "@lib/stats/types";
 import clientPromise from "@lib/mongodb";
 import {Document, ObjectId, WithId} from "mongodb";
 import {UserSemesterDB} from "@lib/grades/types";
@@ -9,7 +9,7 @@ import {calculateGroupRankings} from "@lib/stats/group_rankings";
 import {calculateStudentRankings} from "@lib/stats/user_ranking";
 import {calculateUEStats} from "@lib/stats/ue_ranking";
 import {calculateModuleStats} from "@lib/stats/module_ranking";
-import {calculateUserGroupStats} from "@lib/stats/group_stats";
+import {CalculateUserGroupGraphStats, CalculateUserGroupStats} from "@lib/stats/group_stats";
 
 const GRADES_STATS_COLLECTION = 'gradesStats';
 
@@ -56,6 +56,32 @@ async function getLastGlobalStatistics(fetchOpts: FetchStatisticsOPTS): Promise<
 
 
     return rankingData;
+}
+
+// Get all global statistics for the given name, semester and academic year. If there are no statistics, return null.
+export async function getAllGlobalStatistics(fetchOpts: FetchStatisticsOPTS): Promise<RankingDB[] | null> {
+    const client = await clientPromise;
+    const db = client.db();
+
+    const documents = db.collection(GRADES_STATS_COLLECTION).find({
+        name: fetchOpts.name,
+        semester: fetchOpts.semester,
+        academicYear: fetchOpts.academicYear,
+    });
+
+    if (!documents) {
+        return null
+    }
+
+    const rankings = await documents.toArray() as WithId<Document>[];
+    if (rankings.length === 0) {
+        return null;
+    }
+
+    return rankings.map(ranking => {
+        ranking.date = new Date(ranking.date);
+        return ranking as RankingDB;
+    });
 }
 
 // Update the global statistics for the given name. If there are existing statistics for the same day, update them. Otherwise, insert a new document.
@@ -214,36 +240,40 @@ export async function GetGlobalStatistics(fetchOpts: FetchStatisticsUserOPTS): P
         return null;
     }
 
-    const branchStats: UserGroupStats | null = await calculateUserGroupStats({
-        groupName: userSemester.branch !== "" && userSemester.branch !== null && userSemester.branch !== undefined ? userSemester.branch : null,
-        type: 'branch',
+    const branchStats: UserGroupStats | null = await CalculateUserGroupStats({
+        groupName: userSemester.branch !== "" && userSemester.branch !== null && userSemester.branch !== undefined ? userSemester.branch : userSemester.groupe,
+        type: userSemester.branch !== "" && userSemester.branch !== null && userSemester.branch !== undefined ? 'branch' : 'groupe',
         previousRankings: speGlobalStats.previousRanking,
         currentRankings: speGlobalStats.lastRanking,
         userId: userId,
+        hasBranch: true
     })
 
-    const groupStats: UserGroupStats | null = await calculateUserGroupStats({
+    const groupStats: UserGroupStats | null = await CalculateUserGroupStats({
         groupName: userSemester.groupe ?? null,
         type: 'groupe',
         previousRankings: speGlobalStats.previousRanking,
         currentRankings: speGlobalStats.lastRanking,
         userId: userId,
+        hasBranch: userSemester.branch !== "" && userSemester.branch !== null && userSemester.branch !== undefined
     });
 
-    const speStats: UserGroupStats | null = await calculateUserGroupStats({
+    const speStats: UserGroupStats | null = await CalculateUserGroupStats({
         groupName: userSemester.filiere,
         type: 'filiere',
         previousRankings: speGlobalStats.previousRanking,
         currentRankings: speGlobalStats.lastRanking,
         userId: userId,
+        hasBranch: userSemester.branch !== "" && userSemester.branch !== null && userSemester.branch !== undefined
     });
 
-    const cursusStats: UserGroupStats | null = await calculateUserGroupStats({
+    const cursusStats: UserGroupStats | null = await CalculateUserGroupStats({
         groupName: userSemester.cursus,
         type: 'cursus',
         previousRankings: overallGlobalStats.previousRanking,
         currentRankings: overallGlobalStats.lastRanking,
         userId: userId,
+        hasBranch: userSemester.branch !== "" && userSemester.branch !== null && userSemester.branch !== undefined
     });
 
 
@@ -258,14 +288,96 @@ export async function GetGlobalStatistics(fetchOpts: FetchStatisticsUserOPTS): P
 }
 
 // Get the global statistics for plotting the evolution of a user's average over time. If there are no statistics, return null.
-// export async function GetGlobalStatisticsEvolution(fetchOpts: FetchStatisticsUserOPTS): Promise<{date: Date, average: number}[] | null> {
-//     const {semester, academicYear, userId} = fetchOpts;
-//     if (!userId || !semester || !academicYear) {
-//         return null;
-//     }
-//
-//     const userSemester: UserSemesterDB | null = await GetUserSemesterByUserId(fetchOpts);
-//     if (!userSemester) {
-//         return null;
-//     }
-// }
+export async function GetGlobalStatisticsEvolution(fetchOpts: FetchStatisticsUserOPTS): Promise<UserGraphData | null> {
+    const {semester, academicYear, userId} = fetchOpts;
+    if (!userId || !semester || !academicYear) {
+        return null;
+    }
+
+    const userSemester: UserSemesterDB | null = await GetUserSemesterByUserId(fetchOpts);
+    if (!userSemester) {
+        return null;
+    }
+
+    const globalStatsFiliere = await getAllGlobalStatistics({
+        name: userSemester.filiere,
+        semester,
+        academicYear,
+        isCursus: false,
+    });
+
+    const globalStatsCursus = await getAllGlobalStatistics({
+        name: userSemester.cursus,
+        semester,
+        academicYear,
+        isCursus: true,
+    });
+
+    const xAxisTime: Date[] = globalStatsFiliere ? globalStatsFiliere.map(stats => stats.date) : [];
+    const userAverage: PlottingData = constructUserAverageEvolutionData(globalStatsFiliere, userId.toString());
+
+    const branchGraphData: UserGroupGraphData | null = CalculateUserGroupGraphStats({
+        groupName: userSemester.branch !== "" && userSemester.branch !== null && userSemester.branch !== undefined ? userSemester.branch : userSemester.groupe,
+        type: userSemester.branch !== "" && userSemester.branch !== null && userSemester.branch !== undefined ? 'branch' : 'groupe',
+        rankings: globalStatsFiliere ?? [],
+        userId: userId,
+        hasBranch: true
+    });
+
+    const groupGraphData: UserGroupGraphData | null = CalculateUserGroupGraphStats({
+        groupName: userSemester.groupe ?? null,
+        type: 'groupe',
+        rankings: globalStatsFiliere ?? [],
+        userId: userId,
+        hasBranch: userSemester.branch !== "" && userSemester.branch !== null && userSemester.branch !== undefined
+    });
+
+    const speGraphData: UserGroupGraphData | null = CalculateUserGroupGraphStats({
+        groupName: userSemester.filiere,
+        type: 'filiere',
+        rankings: globalStatsFiliere ?? [],
+        userId: userId,
+        hasBranch: userSemester.branch !== "" && userSemester.branch !== null && userSemester.branch !== undefined
+    });
+
+    const cursusGraphData: UserGroupGraphData | null = CalculateUserGroupGraphStats({
+        groupName: userSemester.cursus,
+        type: 'cursus',
+        rankings: globalStatsCursus ?? [],
+        userId: userId,
+        hasBranch: userSemester.branch !== "" && userSemester.branch !== null && userSemester.branch !== undefined
+    });
+
+    return {
+        userId: userId.toString(),
+        semester,
+        xAxis: xAxisTime,
+        userAverage,
+        branch: branchGraphData,
+        group: groupGraphData,
+        spe: speGraphData,
+        overall: cursusGraphData,
+    }
+}
+
+// Construct the plotting data for the user's average evolution over time
+function constructUserAverageEvolutionData(globalStats: RankingDB[] | null, userId: string): PlottingData {
+    if (!globalStats) {
+        return {
+            label: '',
+            data: [],
+        }
+    }
+
+    const data = globalStats.map((stats): number => {
+        const userRank = stats.studentRankings.find(ranking => ranking.userId.toString() === userId.toString());
+        return userRank ? userRank.average : 0;
+    });
+
+    const label = globalStats.length > 0 ? globalStats[0].date.toISOString() : '';
+
+    return {
+        label,
+        data,
+    }
+}

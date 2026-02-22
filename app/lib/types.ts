@@ -25,4 +25,14 @@ export interface UserGroupStatsOPTS {
     previousRankings: RankingDB | null;
     currentRankings: RankingDB;
     userId: ObjectId;
+    hasBranch: boolean;
+}
+
+// Data needed to construct the stats graph for a user, with the different levels (branch, group, spe, overall)
+export interface UserGroupGraphStatsOPTS {
+    groupName: string | null;
+    type: 'branch' | 'groupe' | 'filiere' | 'cursus';
+    rankings: RankingDB[];
+    userId: ObjectId;
+    hasBranch: boolean;
 }
