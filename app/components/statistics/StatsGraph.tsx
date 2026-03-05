@@ -84,6 +84,27 @@ function StatsGraph({graphData, type}: StatsGraphProps) {
     // Latest user average to show as a reference line label
     const latestUserAvg = [...(graphData.userAverage.data)].reverse().find(v => v != null);
 
+    // Compute dynamic Y domain: 5% padding around [min, max] of all values, clamped to [0, 20]
+    const allValues: number[] = plotData.flatMap(point =>
+        Object.entries(point)
+            .filter(([k]) => k !== "name")
+            .map(([, v]) => v)
+            .filter((v): v is number => typeof v === "number")
+    );
+    const dataMin = allValues.length ? Math.min(...allValues) : 0;
+    const dataMax = allValues.length ? Math.max(...allValues) : 20;
+    const range = dataMax - dataMin || 1;
+    const padding = range * 0.05;
+    const yMin = Math.max(0,  Math.floor(dataMin - padding));
+    const yMax = Math.min(20, Math.ceil(dataMax  + padding));
+
+    // Generate readable ticks within the dynamic range
+    const tickStep = yMax - yMin <= 4 ? 1 : yMax - yMin <= 8 ? 2 : 5;
+    const yTicks: number[] = [];
+    for (let t = Math.ceil(yMin / tickStep) * tickStep; t <= yMax; t += tickStep) {
+        yTicks.push(t);
+    }
+
     return (
         <Card className="overflow-hidden">
             <CardHeader className="pb-2 border-b border-border/50">
@@ -106,8 +127,8 @@ function StatsGraph({graphData, type}: StatsGraphProps) {
                             tickLine={false}
                         />
                         <YAxis
-                            domain={[0, 20]}
-                            ticks={[0, 5, 10, 15, 20]}
+                            domain={[yMin, yMax]}
+                            ticks={yTicks}
                             tick={{fontSize: 11, fill: "hsl(var(--muted-foreground))"}}
                             axisLine={false}
                             tickLine={false}
