@@ -387,6 +387,7 @@ export default function EditYearTemplatePage({templateId}: EditYearTemplatePageP
 
             if (response.ok && data.success) {
                 alert(`✅ Template mis à jour ! (Version ${data.template.version})`);
+                await handleSyncUsers()
                 router.push("/admin/year-templates");
             } else {
                 alert(`❌ Erreur : ${data.error}`);

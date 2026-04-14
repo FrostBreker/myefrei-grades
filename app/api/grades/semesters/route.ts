@@ -163,7 +163,7 @@ export async function PUT(request: Request) {
 }
 
 // Function to update global stats for a semester (e.g., after grades are updated)
-async function updateSemesterGlobalStats(semester: UserSemester, name: string, isCursus: boolean) {
+export async function updateSemesterGlobalStats(semester: UserSemester, name: string, isCursus: boolean) {
     return startBackgroundTransaction(
         `UpdateGlobalStats/${name}`,
         'stats',
