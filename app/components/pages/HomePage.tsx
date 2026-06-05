@@ -17,8 +17,18 @@ import {
     CheckCircle2,
     ArrowRight
 } from "lucide-react";
+import Particles from "@/components/ui/Particles";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 
 function HomePage({initialUserData}: {initialUserData: User | null}) {
+    const { theme, resolvedTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
     // Get display name: firstName if available, otherwise email prefix
     const getDisplayName = () => {
         if (initialUserData?.firstName) {
@@ -73,9 +83,26 @@ function HomePage({initialUserData}: {initialUserData: User | null}) {
     ];
 
     return (
-        <div className="min-h-screen bg-linear-to-b from-background to-muted">
-            {/* Hero Section */}
-            <section className="px-4 py-20 md:py-32">
+        <div className="min-h-screen bg-linear-to-b from-background to-muted relative overflow-hidden">
+            <div className="absolute inset-0 z-0 pointer-events-none">
+                {mounted && (
+                    <Particles
+                        particleColors={(resolvedTheme === 'dark' || theme === 'dark') ? ['#ffffff'] : ['#000000']}
+                        particleCount={200}
+                        particleSpread={10}
+                        speed={0.1}
+                        particleBaseSize={100}
+                        particleHoverFactor={2}
+                        moveParticlesOnHover={true}
+                        alphaParticles={true}
+                        disableRotation={false}
+                    />
+                )}
+            </div>
+            <div className="relative z-10 pointer-events-none">
+                <div className="pointer-events-auto">
+                    {/* Hero Section */}
+                    <section className="px-4 py-20 md:py-32">
                 <div className="flex flex-col items-center text-center space-y-8">
                     <Badge variant="secondary" className="px-4 py-2 text-sm">
                         <GraduationCap className="h-4 w-4 mr-2 inline"/>
@@ -256,6 +283,8 @@ function HomePage({initialUserData}: {initialUserData: User | null}) {
                     </Card>
                 </section>
             )}
+                </div>
+            </div>
         </div>
     );
 }

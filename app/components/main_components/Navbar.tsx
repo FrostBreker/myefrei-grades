@@ -22,6 +22,7 @@ import {
 import {Button} from "@/components/ui/button";
 import {GraduationCap, Home, FileText, BarChart3, Menu, Shield, Users, History} from "lucide-react";
 import {useIsAdmin} from "@lib/hooks/useIsAdmin";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 interface UserProfile {
     firstName?: string;
@@ -247,12 +248,17 @@ function Navbar() {
                                         Se connecter avec Google
                                     </Button>
                                 )}
+                                <div className="pt-4 flex justify-between items-center">
+                                    <span className="text-sm font-medium">Thème</span>
+                                    <ThemeToggle />
+                                </div>
                             </div>
                         </SheetContent>
                     </Sheet>
 
                     {/* Desktop User Dropdown */}
                     <div className="hidden md:flex items-center gap-2">
+                        <ThemeToggle />
                         <Link href="/changelogs">
                             <Button variant="ghost" size="icon" className="h-9 w-9 cursor-pointer" title="Changelogs">
                                 <History className="h-5 w-5"/>
